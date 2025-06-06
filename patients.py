@@ -717,8 +717,8 @@ class PatientsPage(QWidget):
                     self.hr_date_recorded.setDate(QDate(hr_date_val.year, hr_date_val.month, hr_date_val.day))
                 else:
                     self.hr_date_recorded.setDate(QDate.fromString(hr_date_val, "yyyy-MM-dd"))
-                self.hr_height.setValue(hr[1])
-                self.hr_weight.setValue(hr[2])
+                self.hr_height.setValue(int(hr[1]))  # fix: convert decimal to int
+                self.hr_weight.setValue(int(hr[2]))  # fix: convert decimal to int
                 self.hr_allergies.setText(hr[3])
                 self.hr_notes.setPlainText(hr[4])
             else:
