@@ -1,3 +1,9 @@
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL
+);
+
 -- 1. appointment
 CREATE TABLE appointment (
     apmt_id INT PRIMARY KEY AUTO_INCREMENT,
