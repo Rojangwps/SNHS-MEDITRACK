@@ -6,9 +6,10 @@ from PyQt5.QtCore import Qt
 
 import psycopg2
 from grade_section import GradeSectionPage
-from patients import PatientsPage  # Combined patients page
+from patients import PatientsPage
 from reports import ReportsPage
 from storage import StoragePage
+from medication import MedicationPage  # <--- ADD THIS IMPORT
 
 class DashboardUI(QWidget):
     def __init__(self):
@@ -47,20 +48,23 @@ class DashboardUI(QWidget):
         self.pages = QStackedWidget()
 
         self.dashboard_page = GradeSectionPage()
-        self.patients_page = PatientsPage()  # Combined view + add student
-        self.reports_page = ReportsPage(conn)  # Pass connection here!
+        self.patients_page = PatientsPage()
+        self.reports_page = ReportsPage(conn)
         self.storage_page = StoragePage()
+        self.medication_page = MedicationPage()  # <--- ADD THIS
 
         self.pages.addWidget(self.dashboard_page)   # index 0
         self.pages.addWidget(self.patients_page)    # index 1
         self.pages.addWidget(self.reports_page)     # index 2
         self.pages.addWidget(self.storage_page)     # index 3
+        self.pages.addWidget(self.medication_page)  # index 4
 
         menu_items = [
             ("Dashboard", self.dashboard_page),
             ("Patients", self.patients_page),
             ("Generate Reports", self.reports_page),
             ("Storage", self.storage_page),
+            ("Medication", self.medication_page),    # <--- ADD THIS
         ]
 
         for i, (text, _) in enumerate(menu_items):
