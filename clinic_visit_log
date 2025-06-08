@@ -1,0 +1,229 @@
+from PyQt5.QtWidgets import (
+    QWidget, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem, QPushButton,
+    QMessageBox, QHBoxLayout, QLineEdit, QDialog, QFormLayout, QDateEdit, QTimeEdit, QComboBox, QFileDialog
+)
+from PyQt5.QtCore import Qt, QDate, QTime
+import psycopg2
+import csv
+
+def get_db_connection():
+    return psycopg2.connect(
+        host="localhost",
+        database="SAMPLE",
+        user="postgres",
+        password="123"
+    )
+
+class AddEditDialog(QDialog):
+    def __init__(self, parent=None, record=None):
+        super().__init__(parent)
+        self.setWindowTitle("Add/Edit Clinic Visit")
+        layout = QFormLayout(self)
+        self.stud_id = QLineEdit()
+        self.visit_date = QDateEdit()
+        self.visit_date.setCalendarPopup(True)
+        self.visit_date.setDate(QDate.currentDate())
+        self.reason = QLineEdit()
+        self.time_in = QTimeEdit()
+        self.time_in.setDisplayFormat("HH:mm")
+        self.time_out = QTimeEdit()
+        self.time_out.setDisplayFormat("HH:mm")
+
+        layout.addRow("Student ID:", self.stud_id)
+        layout.addRow("Visit Date:", self.visit_date)
+        layout.addRow("Reason:", self.reason)
+        layout.addRow("Time In:", self.time_in)
+        layout.addRow("Time Out:", self.time_out)
+
+        self.btns = QHBoxLayout()
+        self.save_btn = QPushButton("Save")
+        self.cancel_btn = QPushButton("Cancel")
+        self.btns.addWidget(self.save_btn)
+        self.btns.addWidget(self.cancel_btn)
+        layout.addRow(self.btns)
+
+        self.save_btn.clicked.connect(self.accept)
+        self.cancel_btn.clicked.connect(self.reject)
+
+        if record:
+            self.stud_id.setText(str(record[0]))
+            self.visit_date.setDate(record[1])
+            self.reason.setText(record[2])
+            self.time_in.setTime(record[3])
+            self.time_out.setTime(record[4])
+
+    def get_data(self):
+        return (
+            self.stud_id.text(),
+            self.visit_date.date().toString("yyyy-MM-dd"),
+            self.reason.text(),
+            self.time_in.time().toString("HH:mm"),
+            self.time_out.time().toString("HH:mm"),
+        )
+
+class ClinicVisitLog(QWidget):
+    def __init__(self):
+        super().__init__()
+        layout = QVBoxLayout(self)
+        title = QLabel("Clinic Visit Log")
+        title.setStyleSheet("font-size: 22px; font-weight: bold; margin-bottom: 10px;")
+        layout.addWidget(title)
+
+        # Top controls
+        top_bar = QHBoxLayout()
+        self.search_box = QLineEdit()
+        self.search_box.setPlaceholderText("Search by Student ID or Reason...")
+        self.search_box.textChanged.connect(self.search_table)
+        top_bar.addWidget(self.search_box)
+
+        self.add_btn = QPushButton("Add")
+        self.edit_btn = QPushButton("Edit")
+        self.delete_btn = QPushButton("Delete")
+        self.export_btn = QPushButton("Export CSV")
+        self.refresh_btn = QPushButton("Refresh")
+        for btn in [self.add_btn, self.edit_btn, self.delete_btn, self.export_btn, self.refresh_btn]:
+            top_bar.addWidget(btn)
+        layout.addLayout(top_bar)
+
+        self.add_btn.clicked.connect(self.add_record)
+        self.edit_btn.clicked.connect(self.edit_record)
+        self.delete_btn.clicked.connect(self.delete_record)
+        self.export_btn.clicked.connect(self.export_csv)
+        self.refresh_btn.clicked.connect(self.load_data)
+
+        self.table = QTableWidget()
+        self.table.setColumnCount(5)
+        self.table.setHorizontalHeaderLabels(
+            ["Student ID", "Visit Date", "Reason", "Time In", "Time Out"]
+        )
+        self.table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+        layout.addWidget(self.table)
+        self.load_data()
+
+    def load_data(self):
+        self.table.setRowCount(0)
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT stud_id, visit_date, reason, time_in, time_out FROM clinic_visit_log ORDER BY visit_date DESC"
+            )
+            self.rows = cur.fetchall()
+            self.display_rows(self.rows)
+            cur.close()
+            conn.close()
+        except Exception as e:
+            QMessageBox.critical(self, "Database Error", f"Error loading clinic visit log:\n{e}")
+
+    def display_rows(self, rows):
+        self.table.setRowCount(len(rows))
+        for row_idx, row in enumerate(rows):
+            for col_idx, val in enumerate(row):
+                self.table.setItem(row_idx, col_idx, QTableWidgetItem(str(val) if val is not None else ""))
+
+    def search_table(self):
+        query = self.search_box.text().lower()
+        filtered = []
+        for row in self.rows:
+            if query in str(row[0]).lower() or query in str(row[2]).lower():
+                filtered.append(row)
+        self.display_rows(filtered)
+
+    def add_record(self):
+        dialog = AddEditDialog(self)
+        if dialog.exec_():
+            data = dialog.get_data()
+            try:
+                conn = get_db_connection()
+                cur = conn.cursor()
+                cur.execute(
+                    "INSERT INTO clinic_visit_log (stud_id, visit_date, reason, time_in, time_out) VALUES (%s, %s, %s, %s, %s)",
+                    data
+                )
+                conn.commit()
+                cur.close()
+                conn.close()
+                self.load_data()
+            except Exception as e:
+                QMessageBox.critical(self, "Database Error", f"Error adding record:\n{e}")
+
+    def edit_record(self):
+        selected = self.table.currentRow()
+        if selected < 0:
+            QMessageBox.warning(self, "Edit Record", "Please select a row to edit.")
+            return
+        # Get the primary key (stud_id, visit_date) for the record
+        stud_id = self.table.item(selected, 0).text()
+        visit_date = self.table.item(selected, 1).text()
+        reason = self.table.item(selected, 2).text()
+        time_in = self.table.item(selected, 3).text()
+        time_out = self.table.item(selected, 4).text()
+        # Prepare dialog with existing data
+        from datetime import datetime
+        dialog = AddEditDialog(self)
+        dialog.stud_id.setText(stud_id)
+        dialog.visit_date.setDate(QDate.fromString(visit_date, "yyyy-MM-dd"))
+        dialog.reason.setText(reason)
+        dialog.time_in.setTime(QTime.fromString(time_in, "HH:mm"))
+        dialog.time_out.setTime(QTime.fromString(time_out, "HH:mm"))
+        if dialog.exec_():
+            new_data = dialog.get_data()
+            try:
+                conn = get_db_connection()
+                cur = conn.cursor()
+                cur.execute(
+                    "UPDATE clinic_visit_log SET stud_id=%s, visit_date=%s, reason=%s, time_in=%s, time_out=%s WHERE stud_id=%s AND visit_date=%s",
+                    (*new_data, stud_id, visit_date)
+                )
+                conn.commit()
+                cur.close()
+                conn.close()
+                self.load_data()
+            except Exception as e:
+                QMessageBox.critical(self, "Database Error", f"Error editing record:\n{e}")
+
+    def delete_record(self):
+        selected = self.table.currentRow()
+        if selected < 0:
+            QMessageBox.warning(self, "Delete Record", "Please select a row to delete.")
+            return
+        stud_id = self.table.item(selected, 0).text()
+        visit_date = self.table.item(selected, 1).text()
+        confirm = QMessageBox.question(
+            self, "Delete Record",
+            f"Delete record for Student ID {stud_id} on {visit_date}?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if confirm == QMessageBox.Yes:
+            try:
+                conn = get_db_connection()
+                cur = conn.cursor()
+                cur.execute(
+                    "DELETE FROM clinic_visit_log WHERE stud_id=%s AND visit_date=%s",
+                    (stud_id, visit_date)
+                )
+                conn.commit()
+                cur.close()
+                conn.close()
+                self.load_data()
+            except Exception as e:
+                QMessageBox.critical(self, "Database Error", f"Error deleting record:\n{e}")
+
+    def export_csv(self):
+        try:
+            path, _ = QFileDialog.getSaveFileName(self, "Export CSV", "", "CSV Files (*.csv)")
+            if not path:
+                return
+            with open(path, "w", newline='', encoding='utf-8') as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow(["Student ID", "Visit Date", "Reason", "Time In", "Time Out"])
+                for row_idx in range(self.table.rowCount()):
+                    rowdata = []
+                    for col_idx in range(self.table.columnCount()):
+                        item = self.table.item(row_idx, col_idx)
+                        rowdata.append(item.text() if item else "")
+                    writer.writerow(rowdata)
+            QMessageBox.information(self, "Export CSV", f"Exported to {path}")
+        except Exception as e:
+            QMessageBox.critical(self, "Export Error", f"Error exporting CSV:\n{e}")
