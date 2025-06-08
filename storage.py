@@ -609,8 +609,12 @@ class StoragePage(QWidget):
     def search_items(self):
         query = self.search_bar.text().lower()
         for row in range(self.table.rowCount()):
-            item_name = self.table.item(row, 0).text().lower()
-            is_visible = query in item_name
+            row_text = ""
+            for col in range(self.table.columnCount()):
+                item = self.table.item(row, col)
+                if item is not None:
+                    row_text += item.text().lower() + " "
+            is_visible = query in row_text
             self.table.setRowHidden(row, not is_visible)
 
     def show_history(self, invitem_id, cell_widget=None):
