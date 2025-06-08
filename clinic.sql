@@ -144,3 +144,15 @@ CREATE TABLE storage_history (
     details TEXT,
     created_at TIMESTAMP
 );
+
+CREATE TABLE referral (
+    referral_id SERIAL PRIMARY KEY,
+    stud_id VARCHAR(30) REFERENCES student(stud_id),
+    referral_date DATE,
+    referral_reason VARCHAR(255),
+    referral_to VARCHAR(255),      -- <-- Where/Who the student is referred to
+    referral_status VARCHAR(50),   -- e.g. Pending, Completed
+    notes TEXT,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
