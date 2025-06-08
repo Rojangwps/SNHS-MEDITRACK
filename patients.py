@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtGui import QFont, QPixmap, QIcon, QIntValidator
 from PyQt5.QtCore import Qt, QDate
-import datetime
+
 
 class PatientsPage(QWidget):
     def __init__(self):
@@ -886,6 +886,9 @@ class PatientsPage(QWidget):
             QMessageBox.critical(self, "Database Error", f"An error occurred while fetching students:\n{e}")
 
     def edit_student(self, stud_id):
+        """
+        Display an edit student form prefilled with the student's current data.
+        """
         import datetime
         try:
             cursor = self.conn.cursor()
@@ -897,39 +900,40 @@ class PatientsPage(QWidget):
                 FROM student WHERE stud_id = %s
             """, (stud_id,))
             student = cursor.fetchone()
+
             if not student:
                 QMessageBox.warning(self, "Not Found", f"No student found with LRN {stud_id}")
                 cursor.close()
                 return
 
+            # Prefill student fields
             self.lrn_input.setText(str(student[0]))
-            self.lrn_input.setReadOnly(True)
+            self.lrn_input.setReadOnly(True)  # LRN shouldn't be editable
             self.fname_input.setText(student[1])
-            self.mname_input.setText(student[2])
-            self.lname_input.setText(student[3])
-
-            dob_val = student[4]
+            self.lname_input.setText(student[2])
+            dob_val = student[3]
             if isinstance(dob_val, datetime.date):
                 self.dob_input.setDate(QDate(dob_val.year, dob_val.month, dob_val.day))
             else:
-                self.dob_input.setDate(QDate.fromString(str(dob_val), "yyyy-MM-dd"))
-
-            gender_index = self.gender_input.findText(str(student[5]))
+                self.dob_input.setDate(QDate.fromString(dob_val, "yyyy-MM-dd"))
+            gender_index = self.gender_input.findText(student[4])
             self.gender_input.setCurrentIndex(gender_index if gender_index != -1 else 0)
 
-            yl_idx = self.year_level_input_add.findData(int(student[7]))
+            # Set year level and section
+            yl_idx = self.year_level_input_add.findData(student[6])
             self.year_level_input_add.setCurrentIndex(yl_idx if yl_idx != -1 else 0)
             self.load_sections_for_add_form()
-            sec_idx = self.section_input_add.findData(int(student[6]))
+            sec_idx = self.section_input_add.findData(student[5])
             self.section_input_add.setCurrentIndex(sec_idx if sec_idx != -1 else 0)
 
-            self.email_input.setText(student[8])
-            self.address_input.setText(student[9])
-            self.parent_name_input.setText(f"{student[10]} {student[11]}".strip())
-            self.parent_contact_input.setText(student[12])
-            status_index = self.status_input.findText(str(student[13]))
+            self.email_input.setText(student[7])
+            self.address_input.setText(student[8])
+            self.parent_name_input.setText(f"{student[9]} {student[10]}".strip())
+            self.parent_contact_input.setText(student[11])
+            status_index = self.status_input.findText(student[12])
             self.status_input.setCurrentIndex(status_index if status_index != -1 else 0)
 
+            # Load health record (only latest)
             cursor.execute("""
                 SELECT hr_date_recorded, hr_height, hr_weight, hr_allergies, hr_notes
                 FROM health_record WHERE stud_id = %s
@@ -941,18 +945,19 @@ class PatientsPage(QWidget):
                 if isinstance(hr_date_val, datetime.date):
                     self.hr_date_recorded.setDate(QDate(hr_date_val.year, hr_date_val.month, hr_date_val.day))
                 else:
-                    self.hr_date_recorded.setDate(QDate.fromString(str(hr_date_val), "yyyy-MM-dd"))
-                self.hr_height.setText(f"{int(float(hr[1]))} cm" if hr[1] is not None else "")
-                self.hr_weight.setText(f"{int(float(hr[2]))} kg" if hr[2] is not None else "")
-                self.hr_allergies.setText(hr[3] if hr[3] else "")
-                self.hr_notes.setPlainText(hr[4] if hr[4] else "")
+                    self.hr_date_recorded.setDate(QDate.fromString(hr_date_val, "yyyy-MM-dd"))
+                self.hr_height.setValue(int(hr[1]))  # fix: convert decimal to int
+                self.hr_weight.setValue(int(hr[2]))  # fix: convert decimal to int
+                self.hr_allergies.setText(hr[3])
+                self.hr_notes.setPlainText(hr[4])
             else:
                 self.hr_date_recorded.setDate(QDate.currentDate())
-                self.hr_height.setText("30 cm")
-                self.hr_weight.setText("5 kg")
+                self.hr_height.setValue(30)
+                self.hr_weight.setValue(5)
                 self.hr_allergies.clear()
                 self.hr_notes.clear()
 
+            # Load medical history
             cursor.execute("""
                 SELECT medhist_condition, medhist_diagnosis_date, medhist_notes, medhist_photo
                 FROM medical_history WHERE stud_id = %s
@@ -963,15 +968,15 @@ class PatientsPage(QWidget):
             for cond, diag_date, notes, photo in medhist_rows:
                 row = self.medhist_table.rowCount()
                 self.medhist_table.insertRow(row)
-                self.medhist_table.setItem(row, 0, QTableWidgetItem(cond if cond else ""))
+                self.medhist_table.setItem(row, 0, QTableWidgetItem(cond))
                 dateedit = QDateEdit()
                 dateedit.setCalendarPopup(True)
                 if isinstance(diag_date, datetime.date):
                     dateedit.setDate(QDate(diag_date.year, diag_date.month, diag_date.day))
                 else:
-                    dateedit.setDate(QDate.fromString(str(diag_date), "yyyy-MM-dd"))
+                    dateedit.setDate(QDate.fromString(diag_date, "yyyy-MM-dd"))
                 self.medhist_table.setCellWidget(row, 1, dateedit)
-                self.medhist_table.setItem(row, 2, QTableWidgetItem(notes if notes else ""))
+                self.medhist_table.setItem(row, 2, QTableWidgetItem(notes))
                 upload_btn = QPushButton("Upload Photo")
                 if photo:
                     from tempfile import NamedTemporaryFile
@@ -991,6 +996,7 @@ class PatientsPage(QWidget):
             cursor.close()
             self.show_add_student()
             self.add_form_stack.setCurrentIndex(0)
+            # Change the submit button to update
             self.submit_button.setText("Update Student Info")
             try:
                 self.submit_button.clicked.disconnect()
@@ -1413,65 +1419,3 @@ class KgLineEdit(QLineEdit):
         """Returns the int value (or None if empty)"""
         text = self.text().replace(' kg', '').strip()
         return int(text) if text.isdigit() else None
-
-    class CmLineEdit(QLineEdit):
-        def __init__(self, parent=None):
-            super().__init__(parent)
-            self.setValidator(QIntValidator(0, 999, self))
-            self._updating = False
-            self.textChanged.connect(self._add_suffix)
-            self.setAlignment(Qt.AlignLeft)
-
-        def _add_suffix(self, text):
-            if self._updating:
-                return
-            self._updating = True
-            clean = text.replace(' cm', '').strip()
-            if clean:
-                self.setText(f"{clean} cm")
-                self.setCursorPosition(len(clean))
-            else:
-                self.setText('')
-            self._updating = False
-
-        def value(self):
-            text = self.text().replace(' cm', '').strip()
-            return int(text) if text.isdigit() else None
-
-        def setValue(self, val):
-            # Accepts int or str, sets text with 'cm' suffix if valid
-            if val is None or val == "":
-                self.setText('')
-            else:
-                self.setText(f"{val} cm")
-
-    class KgLineEdit(QLineEdit):
-        def __init__(self, parent=None):
-            super().__init__(parent)
-            self.setValidator(QIntValidator(0, 999, self))
-            self._updating = False
-            self.textChanged.connect(self._add_suffix)
-            self.setAlignment(Qt.AlignLeft)
-
-        def _add_suffix(self, text):
-            if self._updating:
-                return
-            self._updating = True
-            clean = text.replace(' kg', '').strip()
-            if clean:
-                self.setText(f"{clean} kg")
-                self.setCursorPosition(len(clean))
-            else:
-                self.setText('')
-            self._updating = False
-
-        def value(self):
-            text = self.text().replace(' kg', '').strip()
-            return int(text) if text.isdigit() else None
-
-        def setValue(self, val):
-            # Accepts int or str, sets text with 'kg' suffix if valid
-            if val is None or val == "":
-                self.setText('')
-            else:
-                self.setText(f"{val} kg")
