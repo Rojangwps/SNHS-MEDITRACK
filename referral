@@ -1,0 +1,373 @@
+from PyQt5.QtWidgets import (
+    QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QTableWidgetItem,
+    QHBoxLayout, QLineEdit, QTextEdit, QDateEdit, QMessageBox, QFormLayout, QFileDialog, QStackedWidget
+)
+from PyQt5.QtCore import Qt, QDate, pyqtSignal
+import psycopg2
+from docx import Document
+from datetime import datetime
+
+def get_db_connection():
+    return psycopg2.connect(
+        host="localhost",
+        database="SAMPLE",
+        user="postgres",
+        password="123"
+    )
+
+class ReferralPage(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setObjectName("ReferralPageBg")
+        self.stack = QStackedWidget(self)
+        self.records_page = ReferralRecordsPage(self.stack)
+        self.add_page = AddReferralPage(self.stack)
+        self.add_page.referral_added.connect(self.show_records_page)
+        self.stack.addWidget(self.records_page)
+        self.stack.addWidget(self.add_page)
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(self.stack)
+        self.setLayout(layout)
+        self.show_records_page()
+        self.setStyleSheet("""
+            QWidget#ReferralPageBg {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #FED6C8, stop:1 #F9E6DC);
+            }
+        """)
+
+    def show_add_page(self):
+        self.stack.setCurrentWidget(self.add_page)
+
+    def show_records_page(self):
+        self.records_page.load_data()
+        self.stack.setCurrentWidget(self.records_page)
+
+class ReferralRecordsPage(QWidget):
+    def __init__(self, parent_stack):
+        super().__init__()
+        self.parent_stack = parent_stack
+        self.init_ui()
+
+    def init_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(25, 25, 25, 25)
+        layout.setSpacing(16)
+
+        title = QLabel("Student Referrals")
+        title.setStyleSheet("""
+            font-size: 28px;
+            font-weight: bold;
+            background: #FFE1D3;
+            border-radius: 10px;
+            padding: 10px;
+            color: #3a2b23;
+        """)
+        title.setAlignment(Qt.AlignCenter)
+        layout.addWidget(title)
+
+        add_btn = QPushButton("Add Referral")
+        add_btn.setFixedWidth(180)
+        add_btn.setFixedHeight(36)
+        add_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #D295BF; color: white;
+                font-size: 16px; border-radius: 8px;
+                font-weight: 600;
+            }
+            QPushButton:hover { background: #BA74AD; }
+        """)
+        add_btn.clicked.connect(self.goto_add_referral)
+        layout.addWidget(add_btn, alignment=Qt.AlignRight)
+
+        self.table = QTableWidget()
+        self.table.setColumnCount(8)
+        self.table.setHorizontalHeaderLabels([
+            "Student ID", "Student Name", "Date", "Reason", "Referred To", "Status", "Notes", "Actions"
+        ])
+        self.table.setStyleSheet("""
+            QTableWidget {
+                background-color: #FEF1EA;
+                font-size: 16px;
+                border: 2px solid #FED6C8;
+            }
+            QTableWidget::item {
+                font-size: 16px;
+            }
+            QHeaderView::section {
+                font-size: 17px;
+                font-weight: bold;
+                background-color: #FED6C8;
+                border: 1.5px solid #D295BF;
+                color: #3a2b23;
+            }
+            QTableCornerButton::section {
+                background-color: #FED6C8;
+                border: 1.5px solid #D295BF;
+            }
+        """)
+        self.table.verticalHeader().setVisible(False)
+        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.table.horizontalHeader().setStretchLastSection(True)
+        layout.addWidget(self.table)
+        self.setLayout(layout)
+
+    def goto_add_referral(self):
+        self.parent_stack.widget(1).clear_fields()
+        self.parent_stack.setCurrentIndex(1)
+
+    def load_data(self):
+        self.table.setRowCount(0)
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT r.referral_id, r.stud_id, 
+                       s.stud_lname || ', ' || s.stud_fname ||
+                       CASE WHEN s.stud_mname IS NOT NULL AND s.stud_mname <> '' THEN ' ' || s.stud_mname ELSE '' END AS stud_fullname,
+                       r.referral_date, r.referral_reason, r.referral_to, r.referral_status, r.notes
+                FROM referral r
+                LEFT JOIN student s ON r.stud_id = s.stud_id
+                ORDER BY r.referral_date DESC
+            """)
+            rows = cur.fetchall()
+            self.table.setRowCount(len(rows))
+            for row_idx, row in enumerate(rows):
+                for col_idx, val in enumerate(row[1:]):  # skip referral_id
+                    self.table.setItem(row_idx, col_idx, QTableWidgetItem(str(val) if val is not None else ""))
+                btn = QPushButton("Generate DOCX")
+                btn.setStyleSheet("""
+                    QPushButton { background:#a3d5ff; border-radius:5px; }
+                    QPushButton:hover { background:#82c7e6; }
+                """)
+                btn.clicked.connect(lambda _, r=row: self.generate_referral_docx(r))
+                btn_layout = QHBoxLayout()
+                btn_layout.addWidget(btn)
+                btn_layout.setContentsMargins(0,0,0,0)
+                btn_widget = QWidget()
+                btn_widget.setLayout(btn_layout)
+                self.table.setCellWidget(row_idx, 7, btn_widget)
+            cur.close()
+            conn.close()
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to load referrals: {e}")
+
+    def generate_referral_docx(self, referral_row):
+        # referral_row = (referral_id, stud_id, stud_fullname, referral_date, referral_reason, referral_to, referral_status, notes)
+        referral = {
+            "referral_id": referral_row[0],
+            "stud_id": referral_row[1],
+            "stud_fullname": referral_row[2],
+            "referral_date": str(referral_row[3]),
+            "referral_reason": referral_row[4],
+            "referral_to": referral_row[5],
+            "referral_status": referral_row[6],
+            "notes": referral_row[7]
+        }
+        # Fetch student info for year level and section
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT year_level_id, section_id
+                FROM student
+                WHERE stud_id = %s
+            """, (referral["stud_id"],))
+            stu = cur.fetchone()
+            year_level_name = ""
+            section_name = ""
+            if stu:
+                year_level_id, section_id = stu
+                if year_level_id:
+                    cur.execute("SELECT year_level_name FROM year_level WHERE year_level_id=%s", (year_level_id,))
+                    yl = cur.fetchone()
+                    year_level_name = yl[0] if yl else ""
+                if section_id:
+                    cur.execute("SELECT section_name FROM section WHERE section_id=%s", (section_id,))
+                    sc = cur.fetchone()
+                    section_name = sc[0] if sc else ""
+            cur.close()
+            conn.close()
+        except Exception as e:
+            QMessageBox.critical(self, "Database Error", f"Could not fetch student info: {e}")
+            return
+
+        default_filename = f"Referral_{referral['stud_id']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+        save_path, _ = QFileDialog.getSaveFileName(self, "Save Referral DOCX", default_filename, "Word Documents (*.docx)")
+        if not save_path:
+            return
+
+        try:
+            doc = Document()
+            doc.add_heading('School Clinic Referral Form', 0)
+            doc.add_paragraph(f"Date: {referral['referral_date']}")
+            doc.add_paragraph(f"Student Name: {referral['stud_fullname']}")
+            doc.add_paragraph(f"Student ID: {referral['stud_id']}")
+            doc.add_paragraph(f"Year Level: {year_level_name}")
+            doc.add_paragraph(f"Section: {section_name}")
+            doc.add_paragraph(f"Referral To: {referral['referral_to']}")
+            doc.add_paragraph(f"Reason for Referral: {referral['referral_reason']}")
+            doc.add_paragraph(f"Status: {referral['referral_status']}")
+            doc.add_paragraph(f"Notes: {referral['notes']}")
+            doc.add_paragraph("\nSignature: ___________________________")
+            doc.add_paragraph("Clinic Staff")
+
+            doc.save(save_path)
+            QMessageBox.information(self, "Referral Doc Created", f"Referral document saved as:\n{save_path}")
+        except Exception as e:
+            QMessageBox.critical(self, "DOCX Error", f"Could not generate referral document: {e}")
+
+class AddReferralPage(QWidget):
+    referral_added = pyqtSignal()
+
+    def __init__(self, parent_stack):
+        super().__init__()
+        self.parent_stack = parent_stack
+        self.init_ui()
+
+    def init_ui(self):
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.addStretch(1)
+
+        card = QWidget()
+        card.setStyleSheet("""
+            background: #fff8f4;
+            border-radius: 24px;
+            padding: 40px 60px;
+            max-width: 500px;
+            min-width: 400px;
+            border: 1.5px solid #ffe1d3;
+            box-shadow: 0px 4px 24px #d295bf44;
+        """)
+        card_layout = QVBoxLayout(card)
+        card_layout.setSpacing(24)
+
+        title = QLabel("Add Referral")
+        title.setAlignment(Qt.AlignCenter)
+        title.setStyleSheet("""
+            font-size: 32px; font-weight: bold; color:#BA74AD; margin-bottom: 12px;
+        """)
+        card_layout.addWidget(title)
+
+        form_layout = QFormLayout()
+        form_layout.setLabelAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        form_layout.setFormAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+        form_layout.setSpacing(16)
+
+        # Fields
+        self.stud_id = QLineEdit()
+        self.stud_id.setPlaceholderText("Enter Student LRN/ID")
+        self.stud_id.setStyleSheet(self._editfield_css())
+        form_layout.addRow(self._star("Student ID"), self.stud_id)
+
+        self.referral_date = QDateEdit(QDate.currentDate())
+        self.referral_date.setCalendarPopup(True)
+        self.referral_date.setStyleSheet(self._editfield_css())
+        form_layout.addRow(self._star("Date"), self.referral_date)
+
+        self.referral_reason = QLineEdit()
+        self.referral_reason.setPlaceholderText("Enter referral reason")
+        self.referral_reason.setStyleSheet(self._editfield_css())
+        form_layout.addRow(self._star("Reason"), self.referral_reason)
+
+        self.referral_to = QLineEdit()
+        self.referral_to.setPlaceholderText("Referred to whom?")
+        self.referral_to.setStyleSheet(self._editfield_css())
+        form_layout.addRow(self._star("Referral To"), self.referral_to)
+
+        self.referral_status = QLineEdit()
+        self.referral_status.setPlaceholderText("Enter referral status")
+        self.referral_status.setStyleSheet(self._editfield_css())
+        form_layout.addRow(self._star("Status"), self.referral_status)
+
+        self.notes = QTextEdit()
+        self.notes.setPlaceholderText("Any notes (optional)")
+        self.notes.setStyleSheet(self._editfield_css())
+        form_layout.addRow(QLabel("Notes"), self.notes)
+
+        card_layout.addLayout(form_layout)
+
+        # Button row
+        btn_row = QHBoxLayout()
+        btn_row.addStretch(1)
+        save_btn = QPushButton("💾  Save Referral")
+        save_btn.setStyleSheet("""
+            QPushButton {
+                background:#BA74AD; color:white; font-size: 17px; font-weight:bold;
+                padding: 10px 26px; border-radius: 10px; min-width:160px;
+            }
+            QPushButton:hover { background: #d295bf; }
+        """)
+        save_btn.clicked.connect(self.save_referral)
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.setStyleSheet("""
+            QPushButton {
+                background:#b0b0b0; color:white; font-size: 17px;
+                padding: 10px 26px; border-radius: 10px; min-width:120px;
+            }
+            QPushButton:hover { background: #888;}
+        """)
+        cancel_btn.clicked.connect(self.go_back)
+        btn_row.addWidget(save_btn)
+        btn_row.addWidget(cancel_btn)
+        card_layout.addLayout(btn_row)
+
+        outer.addWidget(card, alignment=Qt.AlignHCenter)
+        outer.addStretch(1)
+        self.setLayout(outer)
+
+    def _star(self, text):
+        label = QLabel(f"{text} <span style='color:#ff3b3b;'>*</span>")
+        label.setStyleSheet("font-size: 16px;")
+        return label
+
+    def _editfield_css(self):
+        return """
+            QLineEdit, QComboBox, QDateEdit, QTextEdit {
+                font-size: 16px;
+                background: #fff6f0;
+                border: 2px solid #d295bf;
+                border-radius: 6px;
+                padding: 8px 10px;
+                min-height: 32px;
+            }
+        """
+
+    def clear_fields(self):
+        self.stud_id.clear()
+        self.referral_date.setDate(QDate.currentDate())
+        self.referral_reason.clear()
+        self.referral_to.clear()
+        self.referral_status.clear()
+        self.notes.clear()
+
+    def save_referral(self):
+        sid = self.stud_id.text().strip()
+        date = self.referral_date.date().toString("yyyy-MM-dd")
+        reason = self.referral_reason.text().strip()
+        to = self.referral_to.text().strip()
+        status = self.referral_status.text().strip()
+        notes = self.notes.toPlainText().strip()
+
+        if not sid or not date or not reason or not to or not status:
+            QMessageBox.warning(self, "Missing Information", "Please fill all required fields.")
+            return
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT INTO referral (stud_id, referral_date, referral_reason, referral_to, referral_status, notes, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, NOW())
+            """, (sid, date, reason, to, status, notes))
+            conn.commit()
+            cur.close()
+            conn.close()
+            QMessageBox.information(self, "Success", "Referral saved.")
+            self.referral_added.emit()
+        except Exception as e:
+            QMessageBox.critical(self, "Database Error", f"Could not save referral: {e}")
+
+    def go_back(self):
+        self.parent_stack.setCurrentIndex(0)
