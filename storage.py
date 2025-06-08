@@ -5,152 +5,155 @@ from PyQt5.QtWidgets import (
     QDialogButtonBox, QHeaderView, QComboBox, QDateEdit, QSizePolicy,
     QStyledItemDelegate
 )
-from PyQt5.QtCore import Qt, QDate
+from PyQt5.QtCore import Qt, QDate, QPoint
 import sys
 
 def get_db_connection():
     return psycopg2.connect(
         host="localhost",
-        database="SAMPLE",
+        database="MediTrackSNHS",
         user="postgres",
-        password="123"
+        password="Mylovemondejar"
     )
 
-class StorageFormDialog(QDialog):
-    def __init__(self, mode="Add", item=None, save_callback=None):
+class ItemDialog(QDialog):
+    def __init__(self, name="", quantity="", dosage="", unit="", expiry=None, status="Available"):
         super().__init__()
-        self.setWindowTitle(f"{mode} Storage Item")
+        self.setWindowTitle("Item Details")
+        self.setFixedSize(500, 450)
         self.setStyleSheet("""
             QDialog {
-                background-color: #FDE1D3;
+                background-color: #FFF5F0;
             }
-            QLabel#Header {
-                font-size: 34px;
+            QLabel {
+                font-size: 18px;
                 font-weight: bold;
-                background: transparent;
-                padding: 40px 0 20px 0;
-            }
-            QFormLayout > QLabel {
-                font-size: 20px;
-                background: transparent;
+                padding: 5px;
             }
             QLineEdit, QComboBox, QDateEdit {
                 font-size: 18px;
-                background: #fff6f0;
-                border: 2px solid #d295bf;
-                border-radius: 6px;
                 padding: 10px;
-                min-height: 36px;
+                border: 2px solid #D295BF;
+                border-radius: 8px;
+                min-height: 30px;
             }
             QPushButton {
-                font-size: 20px;
-                padding: 12px 38px;
-                border-radius: 8px;
-            }
-            QPushButton#SaveBtn {
-                background-color: #d295bf;
-                color: white;
-            }
-            QPushButton#BackBtn {
-                background-color: #ffe599;
-                color: #333;
+                font-size: 16px;
+                padding: 8px 16px;
             }
         """)
-        self.setMinimumSize(800, 650)
-        self.save_callback = save_callback
 
-        vbox = QVBoxLayout(self)
-        vbox.setContentsMargins(40, 40, 40, 40)
-        vbox.setSpacing(15)
+        layout = QFormLayout(self)
+        layout.setVerticalSpacing(15)
+        layout.setHorizontalSpacing(20)
 
-        header = QLabel(f"{mode} Storage Item")
-        header.setObjectName("Header")
-        header.setAlignment(Qt.AlignCenter)
-        vbox.addWidget(header)
+        self.name_edit = QLineEdit(name)
+        self.name_edit.setPlaceholderText("Enter item name (eg., Paracetamol)")
+        self.name_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        layout.addRow(QLabel("Name:"), self.name_edit)  
 
-        form = QFormLayout()
-        form.setSpacing(18)
+        quantity_layout = QHBoxLayout()
+        self.quantity_edit = QLineEdit(quantity)
+        self.quantity_edit.setPlaceholderText("Enter quantity (eg., 10)")
+        self.quantity_edit.setFixedHeight(50)
 
-        self.name_edit = QLineEdit(item['name'] if item else "")
-        self.name_edit.setPlaceholderText("Item Name (e.g., Paracetamol)")
-        form.addRow("Name*", self.name_edit)
+        self.minus_btn = QPushButton("-")
+        self.minus_btn.setFixedSize(45, 45)
+        self.plus_btn = QPushButton("+")
+        self.plus_btn.setFixedSize(45, 45)
 
-        self.quantity_edit = QLineEdit(str(item['quantity']) if item else "")
-        self.quantity_edit.setPlaceholderText("Quantity (e.g., 10)")
-        form.addRow("Quantity*", self.quantity_edit)
+        btns_widget = QWidget()
+        btns_layout = QHBoxLayout()
+        btns_layout.setContentsMargins(10, 4, 0, 4)
+        btns_layout.setSpacing(8)
+        btns_layout.addWidget(self.minus_btn)
+        btns_layout.addWidget(self.plus_btn)
+        btns_widget.setLayout(btns_layout)
 
-        self.dosage_edit = QLineEdit(item['dosage'] if item else "")
-        self.dosage_edit.setPlaceholderText("Dosage (e.g., 500mg, 60ml)")
-        form.addRow("Dosage", self.dosage_edit)
+        quantity_layout.addWidget(self.quantity_edit)
+        quantity_layout.addWidget(btns_widget, alignment=Qt.AlignVCenter)
 
-        self.unit_edit = QLineEdit(item['unit'] if item else "")
-        self.unit_edit.setPlaceholderText("Unit (e.g., Tablet, Capsule, ml)")
-        form.addRow("Unit*", self.unit_edit)
+        layout.addRow(QLabel("Quantity:"), quantity_layout)
+
+        # Connect signals
+        self.plus_btn.clicked.connect(self.increment_quantity)
+        self.minus_btn.clicked.connect(self.decrement_quantity)
+
+        self.dosage_edit = QLineEdit(dosage)
+        self.dosage_edit.setPlaceholderText("Enter dosage (eg., 500g, 60ml)")
+        self.dosage_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        layout.addRow(QLabel("Dosage:"), self.dosage_edit)
+
+        self.unit_edit = QLineEdit(unit)
+        self.unit_edit.setPlaceholderText("Enter unit (eg., Tablet, Capsule, ml)")
+        self.unit_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        layout.addRow(QLabel("Unit:"), self.unit_edit)
 
         self.expiry_edit = QDateEdit()
         self.expiry_edit.setCalendarPopup(True)
-        self.expiry_edit.setDate(
-            QDate.fromString(item['expiry'], "yyyy-MM-dd") if item and item['expiry'] else QDate.currentDate().addYears(1)
-        )
-        form.addRow("Expiry Date", self.expiry_edit)
+        self.expiry_edit.setDate(expiry if expiry else QDate.currentDate().addYears(1))
+        self.expiry_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.expiry_edit.setStyleSheet("padding: 8px;")
+        layout.addRow(QLabel("Expiry Date:"), self.expiry_edit)
 
         self.status_combo = QComboBox()
         self.status_combo.addItems(["Available", "Not Available"])
-        if item and item['status']:
-            idx = self.status_combo.findText(item['status'])
-            if idx >= 0:
-                self.status_combo.setCurrentIndex(idx)
-        form.addRow("Status*", self.status_combo)
+        self.status_combo.setCurrentText(status if status in ["Available", "Not Available"] else "Available")
+        self.status_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        layout.addRow(QLabel("Status:"), self.status_combo)
 
-        vbox.addLayout(form)
-        vbox.addStretch(1)
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.setStyleSheet("""
+            QPushButton {
+                min-width: 100px;
+                min-height: 30px;
+                font-size: 18px;
+            }
+        """)
+        buttons.accepted.connect(self.validate_input)
+        buttons.rejected.connect(self.reject)
+        layout.addRow(buttons)
 
-        # Bottom Button Bar
-        btns = QHBoxLayout()
-        btns.addStretch(1)
-        back_btn = QPushButton("Back")
-        back_btn.setObjectName("BackBtn")
-        back_btn.clicked.connect(self.reject)
-        btns.addWidget(back_btn)
-        save_btn = QPushButton("Save" if mode == "Add" else "Update")
-        save_btn.setObjectName("SaveBtn")
-        save_btn.clicked.connect(self.handle_save)
-        btns.addWidget(save_btn)
-        vbox.addLayout(btns)
-
-    def handle_save(self):
-        # Basic validation
+    def validate_input(self):
         if not self.name_edit.text().strip():
-            QMessageBox.warning(self, "Error", "Please enter an item name.")
+            QMessageBox.warning(self, "Error", "Please enter an item name")
             return
         if not self.quantity_edit.text().strip():
-            QMessageBox.warning(self, "Error", "Please enter a quantity.")
+            QMessageBox.warning(self, "Error", "Please enter a quantity")
             return
         try:
             float(self.quantity_edit.text())
         except ValueError:
-            QMessageBox.warning(self, "Error", "Quantity must be a number.")
+            QMessageBox.warning(self, "Error", "Quantity must be a number")
             return
         if not self.unit_edit.text().strip():
-            QMessageBox.warning(self, "Error", "Please enter a unit.")
+            QMessageBox.warning(self, "Error", "Please enter a unit")
             return
-
-        item = {
-            'name': self.name_edit.text().strip(),
-            'quantity': self.quantity_edit.text().strip(),
-            'dosage': self.dosage_edit.text().strip(),
-            'unit': self.unit_edit.text().strip(),
-            'expiry': self.expiry_edit.date().toString("yyyy-MM-dd"),
-            'status': self.status_combo.currentText()
-        }
-        if self.save_callback:
-            self.save_callback(item)
         self.accept()
+    def increment_quantity(self):
+        try:
+            value = float(self.quantity_edit.text()) if self.quantity_edit.text() else 0
+            value += 1
+            self.quantity_edit.setText(str(int(value)) if value.is_integer() else str(value))
+        except ValueError:
+            self.quantity_edit.setText("1")
+
+    def decrement_quantity(self):
+        try:
+            value = float(self.quantity_edit.text()) if self.quantity_edit.text() else 0
+            value -= 1
+            if value < 0:
+                value = 0
+            self.quantity_edit.setText(str(int(value)) if value.is_integer() else str(value))
+        except ValueError:
+            self.quantity_edit.setText("0")
 
 class StorageHistoryDialog(QDialog):
-    def __init__(self, history_rows):
+    def __init__(self, history_rows, all_items=False, cell_center_pos=None):
         super().__init__()
-        self.setWindowTitle("Storage Item History")
+        self.setWindowTitle("Storage Item History" if not all_items else "Storage History (All Items)")
+        self.setMinimumSize(1200, 600)
+        self.resize(1500, 700)
         self.setStyleSheet("""
             QDialog {
                 background-color: #FDE1D3;
@@ -179,27 +182,41 @@ class StorageHistoryDialog(QDialog):
                 padding: 12px 38px;
             }
         """)
-        self.setMinimumSize(1100, 500)
+
         vbox = QVBoxLayout(self)
         vbox.setContentsMargins(36, 36, 36, 36)
+        vbox.setSpacing(16)
 
-        header = QLabel("Storage Item History")
+        header = QLabel("Storage Item History" if not all_items else "Storage History (All Items)")
         header.setObjectName("Header")
         header.setAlignment(Qt.AlignCenter)
         vbox.addWidget(header)
 
         table = QTableWidget()
-        table.setColumnCount(8)
-        table.setHorizontalHeaderLabels([
-            "Date", "Action", "Qty Before", "Qty After", "Change", "Student ID", "Student Name", "Details"
-        ])
+        table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        if all_items:
+            table.setColumnCount(9)
+            table.setHorizontalHeaderLabels([
+                "Date", "Action", "Item", "Qty Before", "Qty After", "Change", "Student ID", "Student Name", "Details"
+            ])
+        else:
+            table.setColumnCount(8)
+            table.setHorizontalHeaderLabels([
+                "Date", "Action", "Qty Before", "Qty After", "Change", "Student ID", "Student Name", "Details"
+            ])
         table.setRowCount(len(history_rows))
         for i, row in enumerate(history_rows):
             for j, value in enumerate(row):
                 table.setItem(i, j, QTableWidgetItem(str(value) if value is not None else ""))
-        vbox.addWidget(table)
+                item = QTableWidgetItem(str(value) if value is not None else "")
+                item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+                table.setItem(i, j, item)
+                
+        table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        table.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        table.setMinimumHeight(400)
+        vbox.addWidget(table, stretch=1)
 
-        # Bottom bar with back button
         btns = QHBoxLayout()
         btns.addStretch(1)
         back_btn = QPushButton("Back")
@@ -207,6 +224,18 @@ class StorageHistoryDialog(QDialog):
         back_btn.clicked.connect(self.reject)
         btns.addWidget(back_btn)
         vbox.addLayout(btns)
+
+        # Center dialog on the specified cell or widget
+        if cell_center_pos:
+            # Ensure dialog is shown so geometry is correct
+            self.show()
+            self.repaint()
+            self.raise_()
+            QApplication.processEvents()
+            # Move dialog so its center matches the cell_center_pos
+            geo = self.frameGeometry()
+            geo.moveCenter(cell_center_pos)
+            self.move(geo.topLeft())
 
 class WordWrapDelegate(QStyledItemDelegate):
     def __init__(self, parent=None):
@@ -238,7 +267,7 @@ class StoragePage(QWidget):
             padding: 10px;
             border-radius: 10px;
             font-weight: bold;
-            font-size: 22px;
+            font-size: 28px;
         """)
         title_label.setAlignment(Qt.AlignCenter)
         main_layout.addWidget(title_label)
@@ -266,12 +295,12 @@ class StoragePage(QWidget):
 
         add_btn = QPushButton("Add Item")
         add_btn.setFixedWidth(150)
-        add_btn.setStyleSheet("background-color: #D295BF; color: white; padding: 13px 20px; font-size: 16px;")
+        add_btn.setStyleSheet("background-color: #D295BF; color: white; font-weight: bold; padding: 15px; border-radius: 10px; font-size: 18px;")
         add_btn.clicked.connect(self.add_item)
 
         history_btn = QPushButton("View Storage History")
-        history_btn.setFixedWidth(200)
-        history_btn.setStyleSheet("background-color: #a3d5ff; color: #333; padding: 13px 20px; font-size: 16px;")
+        history_btn.setFixedWidth(235)
+        history_btn.setStyleSheet("background-color: #5DADE2; color: white;font-weight: bold; padding: 15px; border-radius: 10px; font-size: 18px;")
         history_btn.clicked.connect(self.show_history_all)
 
         control_layout.addWidget(self.search_bar)
@@ -340,7 +369,16 @@ class StoragePage(QWidget):
             QMessageBox.critical(self, "Database Error", f"Failed to load inventory: {e}")
 
     def add_item(self):
-        def save_callback(new_item):
+        dialog = ItemDialog()
+        if dialog.exec_() == QDialog.Accepted:
+            new_item = {
+                'name': dialog.name_edit.text(),
+                'quantity': dialog.quantity_edit.text(),
+                'dosage': dialog.dosage_edit.text(),
+                'unit': dialog.unit_edit.text(),
+                'expiry': dialog.expiry_edit.date().toString("yyyy-MM-dd"),
+                'status': dialog.status_combo.currentText()
+            }
             try:
                 conn = get_db_connection()
                 cur = conn.cursor()
@@ -348,8 +386,7 @@ class StoragePage(QWidget):
                     INSERT INTO inventory_item (invitem_name, invitem_quantity, invitem_dosage, invitem_unit, invitem_expiry_date, invitem_status)
                     VALUES (%s, %s, %s, %s, %s, %s)
                     RETURNING invitem_id
-                """, (new_item['name'], new_item['quantity'], new_item['dosage'], new_item['unit'], new_item['expiry'],
-                      new_item['status']))
+                """, (new_item['name'], new_item['quantity'], new_item['dosage'], new_item['unit'], new_item['expiry'], new_item['status']))
                 new_item['id'] = cur.fetchone()[0]
                 self.log_storage_history(new_item['id'], "added", 0, int(new_item['quantity']), int(new_item['quantity']), None, None, "New item added")
                 conn.commit()
@@ -358,12 +395,27 @@ class StoragePage(QWidget):
                 self.load_items_from_db()
             except Exception as e:
                 QMessageBox.critical(self, "Database Error", f"Failed to add item: {e}")
-        dialog = StorageFormDialog(mode="Add", save_callback=save_callback)
-        dialog.exec_()
 
     def edit_item(self, row):
         item = self.items[row]
-        def save_callback(updated_item):
+        expiry_date = QDate.fromString(item['expiry'], "yyyy-MM-dd")
+        dialog = ItemDialog(
+            name=item['name'],
+            quantity=item['quantity'],
+            dosage=item['dosage'],
+            unit=item['unit'],
+            expiry=expiry_date,
+            status=item['status']
+        )
+        if dialog.exec_() == QDialog.Accepted:
+            updated_item = {
+                'name': dialog.name_edit.text(),
+                'quantity': dialog.quantity_edit.text(),
+                'dosage': dialog.dosage_edit.text(),
+                'unit': dialog.unit_edit.text(),
+                'expiry': dialog.expiry_edit.date().toString("yyyy-MM-dd"),
+                'status': dialog.status_combo.currentText()
+            }
             try:
                 conn = get_db_connection()
                 cur = conn.cursor()
@@ -384,8 +436,6 @@ class StoragePage(QWidget):
                 self.load_items_from_db()
             except Exception as e:
                 QMessageBox.critical(self, "Database Error", f"Failed to update item: {e}")
-        dialog = StorageFormDialog(mode="Edit", item=item, save_callback=save_callback)
-        dialog.exec_()
 
     def delete_item(self, row):
         item_id = self.items[row]['id']
@@ -523,22 +573,38 @@ class StoragePage(QWidget):
             btn_layout.setSpacing(5)
             btn_widget = QWidget()
             btn_widget.setLayout(btn_layout)
+            btn_widget.setStyleSheet("background-color: #FFF5F0;")
             self.table.setCellWidget(idx, 6, btn_widget)
 
             history_btn = QPushButton("History")
+            history_btn.setFixedWidth(90)  # Adjust width as you like
+            history_btn.setFixedHeight(30)  # Adjust height for vertical centering
+
+            history_widget = QWidget()
+            history_layout = QHBoxLayout()
+            history_layout.setContentsMargins(0, 0, 0, 1)
+            history_layout.setSpacing(0)
+            history_layout.addStretch()  # optional: for full center effect
+            history_layout.addWidget(history_btn, alignment=Qt.AlignCenter)
+            history_widget.setStyleSheet("background-color: #FFF5F0;")
+            history_layout.addStretch()  # optional
+            history_widget.setLayout(history_layout)
             history_btn.setStyleSheet("""
                 QPushButton {
                     background-color: #ffe599;
                     padding: 5px;
                     font-size: 16px;
                     border-radius: 5px;
+                    min-width: 120px; 
+                    max-width: 120px;
                 }
                 QPushButton:hover {
                     background-color: #eedd82;
                 }
             """)
-            history_btn.clicked.connect(lambda _, invitem_id=item['id']: self.show_history(invitem_id))
-            self.table.setCellWidget(idx, 7, history_btn)
+            # Pass the button widget to show_history for centering
+            history_btn.clicked.connect(lambda _, invitem_id=item['id'], btn=history_btn: self.show_history(invitem_id, btn))
+            self.table.setCellWidget(idx, 7, history_widget)
 
     def search_items(self):
         query = self.search_bar.text().lower()
@@ -547,15 +613,15 @@ class StoragePage(QWidget):
             is_visible = query in item_name
             self.table.setRowHidden(row, not is_visible)
 
-    def show_history(self, invitem_id):
+    def show_history(self, invitem_id, cell_widget=None):
         try:
             conn = get_db_connection()
             cur = conn.cursor()
             cur.execute("""
                 SELECT sh.created_at, sh.action, sh.quantity_before, sh.quantity_after, sh.change, 
-                       sh.dispensed_to_student_id,
-                       COALESCE(s.stud_fname || ' ' || s.stud_lname, '') AS stud_name,
-                       sh.details
+                    sh.dispensed_to_student_id,
+                    COALESCE(s.stud_fname || ' ' || s.stud_lname, '') AS stud_name,
+                    sh.details
                 FROM storage_history sh
                 LEFT JOIN student s ON sh.dispensed_to_student_id = s.stud_id
                 WHERE sh.invitem_id=%s
@@ -564,7 +630,10 @@ class StoragePage(QWidget):
             rows = cur.fetchall()
             cur.close()
             conn.close()
-            dialog = StorageHistoryDialog(rows)
+            # Center dialog over the main window (StoragePage)
+            main_rect = self.geometry()
+            global_center = self.mapToGlobal(main_rect.center())
+            dialog = StorageHistoryDialog(rows, all_items=False, cell_center_pos=global_center)
             dialog.exec_()
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to show history: {e}")
@@ -586,24 +655,10 @@ class StoragePage(QWidget):
             rows = cur.fetchall()
             cur.close()
             conn.close()
-            # Show as a dialog (add item name column)
-            # Reuse dialog or make a new one with an extra column as needed
-            class AllHistoryDialog(StorageHistoryDialog):
-                def __init__(self, all_rows):
-                    super().__init__([])
-                    self.setWindowTitle("Storage History (All Items)")
-                    self.layout().removeWidget(self.layout().itemAt(1).widget())
-                    table = QTableWidget()
-                    table.setColumnCount(9)
-                    table.setHorizontalHeaderLabels([
-                        "Date", "Action", "Item", "Qty Before", "Qty After", "Change", "Student ID", "Student Name", "Details"
-                    ])
-                    table.setRowCount(len(all_rows))
-                    for i, row in enumerate(all_rows):
-                        for j, value in enumerate(row):
-                            table.setItem(i, j, QTableWidgetItem(str(value) if value is not None else ""))
-                    self.layout().insertWidget(1, table)
-            dialog = AllHistoryDialog(rows)
+            # Center dialog over the main window
+            main_rect = self.geometry()
+            global_center = self.mapToGlobal(main_rect.center())
+            dialog = StorageHistoryDialog(rows, all_items=True, cell_center_pos=global_center)
             dialog.exec_()
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to show all history: {e}")
@@ -612,31 +667,120 @@ class DispenseDialog(QDialog):
     def __init__(self, max_qty, student_exists_func, parent=None):
         super().__init__(parent)
         self.student_exists_func = student_exists_func
+        self.max_qty = max_qty
         self.setWindowTitle("Dispense Medicine")
+        self.setFixedSize(500, 370)
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #FFF5F0;
+            }
+            QLabel {
+                font-size: 18px;
+                font-weight: bold;
+                padding: 5px;
+            }
+            QLineEdit, QComboBox, QDateEdit {
+                font-size: 18px;
+                padding: 10px;
+                border: 2px solid #D295BF;
+                border-radius: 8px;
+                min-height: 30px;
+            }
+            QPushButton {
+                font-size: 16px;
+                padding: 8px 16px;
+            }
+        """)
+
         layout = QFormLayout(self)
+        layout.setVerticalSpacing(15)
+        layout.setHorizontalSpacing(20)
+
+        # --- Quantity Row with + and - buttons ---
+        quantity_layout = QHBoxLayout()
         self.qty_edit = QLineEdit()
-        self.qty_edit.setPlaceholderText(f"Max: {max_qty}")
+        self.qty_edit.setPlaceholderText(f"Enter quantity (Max: {max_qty})")
+        self.qty_edit.setFixedHeight(50)
+
+        self.minus_btn = QPushButton("-")
+        self.minus_btn.setFixedSize(45, 45)
+        self.plus_btn = QPushButton("+")
+        self.plus_btn.setFixedSize(45, 45)
+
+        btns_widget = QWidget()
+        btns_layout = QHBoxLayout()
+        btns_layout.setContentsMargins(10, 4, 0, 4)
+        btns_layout.setSpacing(8)
+        btns_layout.addWidget(self.minus_btn)
+        btns_layout.addWidget(self.plus_btn)
+        btns_widget.setLayout(btns_layout)
+
+        quantity_layout.addWidget(self.qty_edit)
+        quantity_layout.addWidget(btns_widget, alignment=Qt.AlignVCenter)
+
+        # Connect signals
+        self.plus_btn.clicked.connect(self.increment_quantity)
+        self.minus_btn.clicked.connect(self.decrement_quantity)
+
+        layout.addRow(QLabel("Quantity:"), quantity_layout)
+
+        # --- Other Fields ---
         self.student_id_edit = QLineEdit()
         self.student_id_edit.setPlaceholderText("Student LRN/ID number")
+        self.student_id_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
         self.date_edit = QDateEdit(QDate.currentDate())
         self.date_edit.setCalendarPopup(True)
+        self.date_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.date_edit.setStyleSheet("padding: 8px;")
+
         self.notes_edit = QLineEdit()
-        layout.addRow("Quantity:", self.qty_edit)
-        layout.addRow("Student ID:", self.student_id_edit)
-        layout.addRow("Date:", self.date_edit)
-        layout.addRow("Notes:", self.notes_edit)
+        self.notes_edit.setPlaceholderText("Dispense notes (optional)")
+        self.notes_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+        layout.addRow(QLabel("Student ID:"), self.student_id_edit)
+        layout.addRow(QLabel("Date:"), self.date_edit)
+        layout.addRow(QLabel("Notes:"), self.notes_edit)
+
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.setStyleSheet("""
+            QPushButton {
+                min-width: 100px;
+                min-height: 30px;
+                font-size: 18px;
+            }
+        """)
         buttons.accepted.connect(self.validate_input)
         buttons.rejected.connect(self.reject)
         layout.addRow(buttons)
 
+    def increment_quantity(self):
+        try:
+            value = int(self.qty_edit.text()) if self.qty_edit.text() else 0
+            value += 1
+            if value > self.max_qty:
+                value = self.max_qty
+            self.qty_edit.setText(str(value))
+        except ValueError:
+            self.qty_edit.setText("1")
+
+    def decrement_quantity(self):
+        try:
+            value = int(self.qty_edit.text()) if self.qty_edit.text() else 0
+            value -= 1
+            if value < 1:
+                value = 1
+            self.qty_edit.setText(str(value))
+        except ValueError:
+            self.qty_edit.setText("1")
+
     def validate_input(self):
         try:
             value = int(self.qty_edit.text())
-            if value <= 0:
+            if value <= 0 or value > self.max_qty:
                 raise ValueError
         except Exception:
-            QMessageBox.warning(self, "Error", "Please enter a valid quantity")
+            QMessageBox.warning(self, "Error", f"Please enter a valid quantity (1-{self.max_qty})")
             return
         student_id_text = self.student_id_edit.text().strip()
         if not student_id_text:
