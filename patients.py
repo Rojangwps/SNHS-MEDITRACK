@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import (
     QListWidget, QFrame, QFormLayout, QGroupBox, QStackedWidget,
     QTextEdit, QSpinBox, QTableWidget, QTableWidgetItem, QHeaderView, QFileDialog
 )
-from PyQt5.QtGui import QFont, QPixmap, QIcon
+from PyQt5.QtGui import QFont, QPixmap, QIcon, QIntValidator
 from PyQt5.QtCore import Qt, QDate
 
 class PatientsPage(QWidget):
@@ -19,23 +19,24 @@ class PatientsPage(QWidget):
 
     def init_ui(self):
         self.main_layout = QHBoxLayout(self)
-        self.setStyleSheet("background-color: #fbe0d0;")
+        self.setStyleSheet("background-color: #fff6f1;")
         self.center_frame = QFrame()
+        self.center_frame.setMaximumHeight(1020)  # You can adjust this number as needed
         self.center_frame.setObjectName("MainFrame")
         self.center_frame.setStyleSheet("""
             QFrame#MainFrame {
-                background: #fff6f1;
+                background: #FBE0D0;
                 border-radius: 18px;
                 border: 1.5px solid #d9b79e;
             }
         """)
         self.center_frame_layout = QVBoxLayout(self.center_frame)
-        self.center_frame_layout.setContentsMargins(32, 32, 32, 32)
+        self.center_frame_layout.setContentsMargins(24, 0, 24, 0)
         self.center_frame_layout.setSpacing(18)
         self.main_layout.addWidget(self.center_frame, stretch=8)
 
         self.header = QLabel("View Students")
-        self.header.setFont(QFont("Arial", 36, QFont.Bold))
+        self.header.setFont(QFont("Arial", 28, QFont.Bold))
         self.header.setAlignment(Qt.AlignCenter)
         self.header.setStyleSheet("""
             background: #fbe0d0;
@@ -50,19 +51,22 @@ class PatientsPage(QWidget):
         filter_row = QHBoxLayout(self.filter_widget)
         filter_row.setSpacing(18)
         lbl_year = QLabel("Year Level:")
-        lbl_year.setFont(QFont("Arial", 18))
+        lbl_year.setFont(QFont("Arial", 16))
         self.year_level_input_view = QComboBox()
         self.year_level_input_view.setFont(QFont("Arial", 16))
-        self.year_level_input_view.setMinimumWidth(180)
+        self.year_level_input_view.setFixedWidth(250)
+        self.filter_widget.setStyleSheet("background-color: #FBE0D0; border-radius: 8px;")
+        self.year_level_input_view.setStyleSheet("background-color: #FFF0F5; border: 2px solid #D295BF; border-radius: 5px;")
         self.year_level_input_view.addItem("Select Year Level", -1)
         self.year_level_input_view.currentIndexChanged.connect(self.load_sections_for_year_view)
         self.year_level_input_view.setToolTip("Select a year level to filter students.")
 
         lbl_section = QLabel("Section:")
-        lbl_section.setFont(QFont("Arial", 18))
+        lbl_section.setFont(QFont("Arial", 16))
         self.section_input_view = QComboBox()
         self.section_input_view.setFont(QFont("Arial", 16))
-        self.section_input_view.setMinimumWidth(180)
+        self.section_input_view.setFixedWidth(250)
+        self.section_input_view.setStyleSheet("background-color: #FFF0F5; border: 2px solid #D295BF; border-radius: 5px;")
         self.section_input_view.addItem("Select Section", -1)
         self.section_input_view.setToolTip("Select a section to filter students.")
 
@@ -92,18 +96,38 @@ class PatientsPage(QWidget):
         self.view_students_button.clicked.connect(self.display_students)
         self.center_frame_layout.addWidget(self.view_students_button)
 
-        self.view_students_area = QScrollArea()
-        self.view_students_area.setWidgetResizable(True)
-        self.view_students_area.setStyleSheet("QScrollArea { background: transparent; }")
-        self.view_students_content = QWidget()
-        self.view_students_layout = QVBoxLayout(self.view_students_content)
-        self.view_students_layout.setAlignment(Qt.AlignTop)
-        self.view_students_area.setWidget(self.view_students_content)
-        self.center_frame_layout.addWidget(self.view_students_area, stretch=10)
+        # ----- TABLE FOR STUDENTS -----
+        self.students_table = QTableWidget()
+        self.students_table.setFont(QFont("Arial", 25)) 
+        self.students_table.setColumnCount(5)
+        self.students_table.setHorizontalHeaderLabels(["LRN", "Last Name", "Middle Name", "First Name", "Edit"])
+        self.students_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        self.students_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        self.students_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
+        self.students_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
+        self.students_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.Stretch)
+        self.students_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.students_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.students_table.setStyleSheet("""
+            QTableWidget {
+                background: #fff6f1;
+                border-radius: 12px;
+                font-size: 22px;
+            }
+            QHeaderView::section {
+                background: #FFE1D3;
+                font-weight: bold;
+                font-size: 21px;
+                border: 1.5px solid #d9b79e;
+                padding: 10px 0;
+            }
+        """)
+        self.center_frame_layout.addWidget(self.students_table)
 
         # --- BUTTONS AT THE BOTTOM ---
         btns_row = QHBoxLayout()
         btns_row.setSpacing(22)
+        btns_row.setContentsMargins(24, 10, 24, 14)
         self.btn_switch_to_add = QPushButton("Add Student")
         self.btn_switch_to_add.setStyleSheet("""
             QPushButton {
@@ -122,7 +146,7 @@ class PatientsPage(QWidget):
         self.btn_switch_to_add.clicked.connect(self.show_add_student)
         btns_row.addWidget(self.btn_switch_to_add)
 
-        self.btn_switch_to_manage = QPushButton("Manage Year Level & Section")
+        self.btn_switch_to_manage = QPushButton("Manage Year Level and Section")
         self.btn_switch_to_manage.setStyleSheet("""
             QPushButton {
                 background-color: #7dcea0;
@@ -131,6 +155,7 @@ class PatientsPage(QWidget):
                 font-size: 20px;
                 border-radius: 10px;
                 padding: 10px 0;
+                
             }
             QPushButton:hover {
                 background-color: #51956b;
@@ -140,7 +165,6 @@ class PatientsPage(QWidget):
         self.btn_switch_to_manage.clicked.connect(self.show_manage_year_section)
         btns_row.addWidget(self.btn_switch_to_manage)
 
-        # --- NEW: View Students Button for Add/Manage pages ---
         self.btn_switch_to_view = QPushButton("View Students")
         self.btn_switch_to_view.setStyleSheet("""
             QPushButton {
@@ -160,26 +184,31 @@ class PatientsPage(QWidget):
         btns_row.addWidget(self.btn_switch_to_view)
 
         self.center_frame_layout.addLayout(btns_row)
+        
 
         self.create_add_student_form()
         self.manage_widget = QWidget()
         self.manage_layout = QVBoxLayout(self.manage_widget)
         self.manage_layout.setSpacing(20)
+        
         yl_label = QLabel("Manage Year Levels")
         yl_label.setFont(QFont("Arial", 20, QFont.Bold))
         self.manage_layout.addWidget(yl_label)
+        
         yl_form_layout = QHBoxLayout()
         self.year_level_name_input = QLineEdit()
         self.year_level_name_input.setPlaceholderText("Enter New Year Level Name")
-        self.year_level_name_input.setFont(QFont("Arial", 15))
+        self.year_level_name_input.setFont(QFont("Arial", 20))
         self.year_level_name_input.setFixedHeight(40)
         yl_form_layout.addWidget(self.year_level_name_input)
+        
         self.btn_add_year_level = QPushButton("Add Year Level")
         self.btn_add_year_level.setStyleSheet(
             "background-color: #27AE60; color: white; font-weight: bold; padding: 12px; border-radius: 8px; font-size: 16px;")
         self.btn_add_year_level.clicked.connect(self.add_year_level)
         yl_form_layout.addWidget(self.btn_add_year_level)
         self.manage_layout.addLayout(yl_form_layout)
+        
         self.year_level_list = QListWidget()
         self.year_level_list.setFont(QFont("Arial", 14))
         self.year_level_list.setFixedHeight(150)
@@ -220,11 +249,27 @@ class PatientsPage(QWidget):
         self.btn_back_from_manage.clicked.connect(self.show_view_students)
         self.manage_layout.addWidget(self.btn_back_from_manage)
         self.student_cards = []
+    
+        
+   
 
     def create_add_student_form(self):
         from PyQt5.QtWidgets import QRadioButton, QButtonGroup
 
         self.add_form_stack = QStackedWidget()
+        INPUT_STYLE = """
+            QLineEdit, QDateEdit, QComboBox, QTextEdit {
+                background-color: #FFF0F5;
+                border: 2px solid #D295BF;
+                border-radius: 7px;
+                font-size: 18px;
+                padding: 8px 12px;
+            }
+            QLineEdit:focus, QDateEdit:focus, QComboBox:focus {
+                border: 2.5px solid #c86ec9;
+                background-color: #ffe8fa;
+            }
+        """
 
         # --- Page 1: Student Info ---
         page1 = QWidget()
@@ -232,47 +277,91 @@ class PatientsPage(QWidget):
         layout1.setContentsMargins(16, 16, 16, 16)
         layout1.setSpacing(18)
 
-        header = QLabel("Add Student Info")
-        header.setAlignment(Qt.AlignCenter)
-        header.setFont(QFont("Arial", 32, QFont.Bold))
-        header.setStyleSheet("background: #fbe0d0; border-radius: 6px; padding: 12px 0 12px 0; margin-bottom: 8px;")
-        layout1.addWidget(header)
 
+        # --- Student Details (left) ---
         student_group = QGroupBox("Student Details")
         student_form = QFormLayout(student_group)
-        student_form.setLabelAlignment(Qt.AlignRight)
-        student_form.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)
+        student_group.setFont(QFont("Arial", 14, QFont.Bold))
+        student_form.setHorizontalSpacing(10)
 
         self.lrn_input = QLineEdit()
         self.lrn_input.setPlaceholderText("Enter numeric LRN")
+        self.lrn_input.setFont(QFont("Arial", 18))
+        self.lrn_input.setFixedHeight(42)
+        self.lrn_input.setFixedWidth(200)
+        self.lrn_input.setStyleSheet(INPUT_STYLE)
+
         self.fname_input = QLineEdit()
         self.fname_input.setPlaceholderText("First Name")
+        self.fname_input.setFont(QFont("Arial", 16))
+        self.fname_input.setFixedHeight(42)
+        self.fname_input.setFixedWidth(250)
+        self.fname_input.setStyleSheet(INPUT_STYLE)
+
+        self.mname_input = QLineEdit()
+        self.mname_input.setPlaceholderText("Middle Name")
+        self.mname_input.setFont(QFont("Arial", 16))
+        self.mname_input.setFixedHeight(42)
+        self.mname_input.setFixedWidth(250)
+        self.mname_input.setStyleSheet(INPUT_STYLE)
+
         self.lname_input = QLineEdit()
         self.lname_input.setPlaceholderText("Last Name")
+        self.lname_input.setFont(QFont("Arial", 16))
+        self.lname_input.setFixedHeight(42)
+        self.lname_input.setFixedWidth(250)
+        self.lname_input.setStyleSheet(INPUT_STYLE)
+
         self.dob_input = QDateEdit()
         self.dob_input.setCalendarPopup(True)
         self.dob_input.setDate(QDate.currentDate())
+        self.dob_input.setFont(QFont("Arial", 16))
+        self.dob_input.setFixedHeight(42)
+        self.dob_input.setFixedWidth(150)
+        self.dob_input.setStyleSheet(INPUT_STYLE)
+
         self.gender_input = QComboBox()
         self.gender_input.addItems(["Select Gender", "Male", "Female", "Other"])
+        self.gender_input.setFont(QFont("Arial", 16))
+        self.gender_input.setFixedHeight(42)
+        self.gender_input.setFixedWidth(170)
+        self.gender_input.setStyleSheet(INPUT_STYLE)
 
         self.year_level_input_add = QComboBox()
         self.year_level_input_add.addItem("Select Year Level", -1)
-        self.year_level_input_add.setMinimumWidth(170)
+        self.year_level_input_add.setFont(QFont("Arial", 16))
+        self.year_level_input_add.setFixedHeight(42)
+        self.year_level_input_add.setFixedWidth(170)
         self.year_level_input_add.setToolTip("Select year level for student")
+        self.year_level_input_add.setStyleSheet(INPUT_STYLE)
         self.year_level_input_add.currentIndexChanged.connect(self.load_sections_for_add_form)
 
         self.section_input_add = QComboBox()
         self.section_input_add.addItem("Select Section", -1)
-        self.section_input_add.setMinimumWidth(170)
+        self.section_input_add.setFont(QFont("Arial", 16))
+        self.section_input_add.setFixedHeight(42)
+        self.section_input_add.setFixedWidth(170)
         self.section_input_add.setToolTip("Select section for student")
+        self.section_input_add.setStyleSheet(INPUT_STYLE)
 
         self.email_input = QLineEdit()
         self.email_input.setPlaceholderText("example@mail.com")
+        self.email_input.setFont(QFont("Arial", 16))
+        self.email_input.setFixedHeight(42)
+        self.email_input.setFixedWidth(400)
+        self.email_input.setStyleSheet(INPUT_STYLE)
+
         self.address_input = QLineEdit()
         self.address_input.setPlaceholderText("Street, City, Province")
+        self.address_input.setFont(QFont("Arial", 16))
+        self.address_input.setFixedHeight(42)
+        self.address_input.setFixedWidth(700)
+        self.address_input.setStyleSheet(INPUT_STYLE)
 
+        # Add to the form layout
         student_form.addRow("LRN*", self.lrn_input)
         student_form.addRow("First Name*", self.fname_input)
+        student_form.addRow("Middle Name", self.mname_input)
         student_form.addRow("Last Name*", self.lname_input)
         student_form.addRow("Date of Birth*", self.dob_input)
         student_form.addRow("Gender*", self.gender_input)
@@ -280,37 +369,88 @@ class PatientsPage(QWidget):
         student_form.addRow("Section*", self.section_input_add)
         student_form.addRow("Email", self.email_input)
         student_form.addRow("Address", self.address_input)
-        layout1.addWidget(student_group)
 
+        # --- Parent/Guardian Details (right) ---
         parent_group = QGroupBox("Parent/Guardian Details")
         parent_form = QFormLayout(parent_group)
+        parent_group.setFont(QFont("Arial", 14, QFont.Bold))
+        
+
         self.parent_name_input = QLineEdit()
         self.parent_name_input.setPlaceholderText("Parent's Full Name")
+        self.parent_name_input.setFont(QFont("Arial", 16))
+        self.parent_name_input.setFixedHeight(42)
+        self.parent_name_input.setFixedWidth(300)
+        self.parent_name_input.setStyleSheet(INPUT_STYLE)
+
         self.parent_contact_input = QLineEdit()
         self.parent_contact_input.setPlaceholderText("09xxxxxxxxx")
+        self.parent_contact_input.setFont(QFont("Arial", 16))
+        self.parent_contact_input.setFixedHeight(42)
+        self.parent_contact_input.setFixedWidth(200)
+        self.parent_contact_input.setStyleSheet(INPUT_STYLE)
         parent_form.addRow("Parent's Name", self.parent_name_input)
         parent_form.addRow("Parent's Contact", self.parent_contact_input)
-        layout1.addWidget(parent_group)
+        parent_group.setFixedHeight(140)
+        parent_group.setMinimumWidth(340)
+        
+        parent_container = QWidget()
+        parent_container_layout = QVBoxLayout(parent_container)
+        parent_container_layout.setContentsMargins(0, 0, 0, 400)  # LEFT, TOP, RIGHT, BOTTOM (e.g. 40px top margin)
+        parent_container_layout.addWidget(parent_group)
 
-        status_row = QHBoxLayout()
-        status_label = QLabel("Status*")
-        status_label.setFont(QFont("Arial", 15))
+        # --- Place Student and Parent/Guardian Details side by side ---
+        details_row = QHBoxLayout()
+        details_row.addWidget(student_group, stretch=2)
+        details_row.addSpacing(24)
+        details_row.addWidget(parent_container, stretch=1)
+        layout1.addLayout(details_row)
+
+        # --- Status Details below both ---
+        status_group = QGroupBox("Status Details")
+        status_form = QFormLayout(status_group)
+        status_group.setFont(QFont("Arial", 14, QFont.Bold))
+        status_form.setLabelAlignment(Qt.AlignRight)
+        status_form.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)
+
         self.status_input = QComboBox()
         self.status_input.addItems(["Select Status", "Active", "Inactive"])
-        status_row.addWidget(status_label)
-        status_row.addWidget(self.status_input)
-        status_row.addStretch()
-        layout1.addLayout(status_row)
+        self.status_input.setFont(QFont("Arial", 16))
+        self.status_input.setFixedHeight(42)
+        self.status_input.setFixedWidth(350)
+        self.status_input.setStyleSheet(INPUT_STYLE)
+        status_form.addRow("Status*", self.status_input)
 
+        label_font = QFont("Arial", 12, QFont.Bold)
+        for i in range(student_form.rowCount()):
+            label_widget = student_form.itemAt(i, QFormLayout.LabelRole).widget()
+            if label_widget:
+                label_widget.setFont(label_font)
+        for i in range(parent_form.rowCount()):
+            label_widget = parent_form.itemAt(i, QFormLayout.LabelRole).widget()
+            if label_widget:
+                label_widget.setFont(label_font)
+        for i in range(status_form.rowCount()):
+            label_widget = status_form.itemAt(i, QFormLayout.LabelRole).widget()
+            if label_widget:
+                label_widget.setFont(label_font)
+
+        layout1.addWidget(status_group)
+
+        # --- Navigation Buttons ---
         nav1 = QHBoxLayout()
         nav1.addStretch()
         self.btn_to_health = QPushButton("Next: Health Record →")
         self.btn_to_health.setStyleSheet(
-            "background-color: #D295BF; color: white; font-weight: bold; padding: 15px; border-radius: 10px; font-size: 18px;")
+            "background-color: #D295BF; color: white; font-weight: bold; padding: 15px; border-radius: 10px; font-size: 18px;"
+        )
         self.btn_to_health.clicked.connect(lambda: self.add_form_stack.setCurrentIndex(1))
         nav1.addWidget(self.btn_to_health)
         layout1.addLayout(nav1)
 
+        self.add_form_stack.addWidget(page1)
+        
+        
         # --- Page 2: Health Record ---
         page2 = QWidget()
         layout2 = QVBoxLayout(page2)
@@ -319,18 +459,44 @@ class PatientsPage(QWidget):
 
         health_group = QGroupBox("Health Record (Current Year)")
         health_form = QFormLayout(health_group)
+        health_group.setFont(QFont("Arial", 14, QFont.Bold))
+        health_form.setLabelAlignment(Qt.AlignLeft)
+        health_form.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)
+        health_form.setHorizontalSpacing(8)
+        health_form.setVerticalSpacing(3)
+        
         self.hr_date_recorded = QDateEdit()
         self.hr_date_recorded.setCalendarPopup(True)
         self.hr_date_recorded.setDate(QDate.currentDate())
-        self.hr_height = QSpinBox()
-        self.hr_height.setRange(30, 250)
-        self.hr_height.setSuffix(" cm")
-        self.hr_weight = QSpinBox()
-        self.hr_weight.setRange(5, 300)
-        self.hr_weight.setSuffix(" kg")
+        self.hr_date_recorded.setFont(QFont("Arial", 16))
+        self.hr_date_recorded.setFixedWidth(150)           
+        self.hr_date_recorded.setStyleSheet(INPUT_STYLE)
+        
+        self.hr_height = CmLineEdit()
+        self.hr_height.setPlaceholderText("Enter (cm)")
+        self.hr_height.setFont(QFont("Arial", 16))
+        self.hr_height.setFixedWidth(150)
+        self.hr_height.setStyleSheet(INPUT_STYLE)
+        
+        self.hr_weight = KgLineEdit()
+        self.hr_weight.setPlaceholderText("Enter (kg)")
+        self.hr_weight.setFont(QFont("Arial", 16))
+        self.hr_weight.setFixedWidth(150)
+        self.hr_weight.setStyleSheet(INPUT_STYLE)
+        
         self.hr_allergies = QLineEdit()
+        self.hr_allergies.setPlaceholderText("Enter Allergies")
+        self.hr_allergies.setStyleSheet(INPUT_STYLE)
+        self.hr_allergies.setFixedWidth(350)
+        self.hr_allergies.setFont(QFont("Arial", 16))
+        
         self.hr_notes = QTextEdit()
-        self.hr_notes.setFixedHeight(60)
+        self.hr_notes.setPlaceholderText("Enter Notes")
+        self.hr_notes.setFixedHeight(80)
+        self.hr_notes.setFixedWidth(500)
+        self.hr_notes.setFont(QFont("Arial", 16))
+        self.hr_notes.setStyleSheet(INPUT_STYLE)
+        
         health_form.addRow("Date Recorded", self.hr_date_recorded)
         health_form.addRow("Height", self.hr_height)
         health_form.addRow("Weight", self.hr_weight)
@@ -354,9 +520,8 @@ class PatientsPage(QWidget):
         prompt_row.addStretch()
         layout2.addLayout(prompt_row)
         # Navigation: No = skip to medical history, Yes = go to current health issue page
-        self.btn_issue_no.clicked.connect(lambda: self.add_form_stack.setCurrentIndex(3))  # Page 4: Medical History
-        self.btn_issue_yes.clicked.connect(
-            lambda: self.add_form_stack.setCurrentIndex(2))  # Page 3: Current Health Issue
+        self.btn_issue_no.clicked.connect(self.goto_medical_history_from_health)  # Page 4: Medical History
+        self.btn_issue_yes.clicked.connect(self.goto_current_issue_from_health)  # Page 3: Current Health Issue
 
         nav2 = QHBoxLayout()
         self.btn_to_student = QPushButton("← Previous")
@@ -366,6 +531,15 @@ class PatientsPage(QWidget):
         nav2.addWidget(self.btn_to_student)
         nav2.addStretch()
         layout2.addLayout(nav2)
+        label_style = """
+        QLabel {
+            font-family: Arial;
+            font-size: 12pt;
+            font-weight: bold;
+        }
+        """
+        health_group.setStyleSheet(label_style)
+        self.add_form_stack.addWidget(page2)
 
         # --- Page 3: Current Health Issue (NEW) ---
         page3 = QWidget()
@@ -374,14 +548,39 @@ class PatientsPage(QWidget):
         layout3.setSpacing(18)
 
         current_issue_group = QGroupBox("Current Health Issue")
+        current_issue_group.setFont(QFont("Arial", 14, QFont.Bold))
         ci_form = QFormLayout(current_issue_group)
+        ci_form.setLabelAlignment(Qt.AlignLeft)
+        ci_form.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)
+        ci_form.setHorizontalSpacing(8)
+        ci_form.setVerticalSpacing(3)
+        
         self.ci_condition = QLineEdit()
+        self.ci_condition.setPlaceholderText("Enter Condition")
+        self.ci_condition.setFont(QFont("Arial", 16))
+        self.ci_condition.setFixedWidth(350)
+        self.ci_condition.setStyleSheet(INPUT_STYLE)
+        
         self.ci_detected_date = QDateEdit()
+        self.ci_detected_date.setFont(QFont("Arial", 16))
+        self.ci_detected_date.setFixedWidth(150)
+        self.ci_detected_date.setStyleSheet(INPUT_STYLE)
         self.ci_detected_date.setCalendarPopup(True)
         self.ci_detected_date.setDate(QDate.currentDate())
+        
         self.ci_status = QLineEdit()
+        self.ci_status.setPlaceholderText("Enter Status")
+        self.ci_status.setFont(QFont("Arial", 16))
+        self.ci_status.setFixedWidth(350)
+        self.ci_status.setStyleSheet(INPUT_STYLE)
+        
         self.ci_notes = QTextEdit()
-        self.ci_notes.setFixedHeight(60)
+        self.ci_notes.setPlaceholderText("Enter Notes")
+        self.ci_notes.setFont(QFont("Arial", 16))
+        self.ci_notes.setFixedWidth(500)
+        self.ci_notes.setFixedHeight(80)
+        self.ci_notes.setStyleSheet(INPUT_STYLE)
+        
         ci_form.addRow("Condition*", self.ci_condition)
         ci_form.addRow("Detected Date*", self.ci_detected_date)
         ci_form.addRow("Status", self.ci_status)
@@ -392,15 +591,26 @@ class PatientsPage(QWidget):
         self.btn_to_health2 = QPushButton("← Previous")
         self.btn_to_health2.setStyleSheet(
             "background-color: #5DADE2; color: white; font-weight: bold; padding: 15px; border-radius: 10px; font-size: 18px;")
+        self.btn_to_health2.clicked.connect(lambda: print("Going back to Health Record") or self.add_form_stack.setCurrentIndex(1))
         self.btn_to_health2.clicked.connect(lambda: self.add_form_stack.setCurrentIndex(1))
         nav3.addWidget(self.btn_to_health2)
         nav3.addStretch()
+        layout3.addLayout(nav3)
         self.btn_to_history = QPushButton("Next: Health History →")
         self.btn_to_history.setStyleSheet(
             "background-color: #D295BF; color: white; font-weight: bold; padding: 15px; border-radius: 10px; font-size: 18px;")
         self.btn_to_history.clicked.connect(lambda: self.add_form_stack.setCurrentIndex(3))
         nav3.addWidget(self.btn_to_history)
         layout3.addLayout(nav3)
+        label_style = """
+        QLabel {
+            font-family: Arial;
+            font-size: 12pt;
+            font-weight: bold;
+        }
+        """
+        current_issue_group.setStyleSheet(label_style)
+        self.add_form_stack.addWidget(page3)
 
         # --- Page 4: Medical History ---
         page4 = QWidget()
@@ -411,15 +621,32 @@ class PatientsPage(QWidget):
         history_group = QGroupBox("Medical History")
         history_vbox = QVBoxLayout(history_group)
         self.medhist_table = QTableWidget(0, 4)
+        history_group.setFont(QFont("Arial", 14, QFont.Bold))
         self.medhist_table.setHorizontalHeaderLabels(["Condition", "Diagnosis Date", "Notes", "Photo"])
         self.medhist_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         history_vbox.addWidget(self.medhist_table)
+        self.medhist_table.setStyleSheet("""
+        QHeaderView::section {
+            background-color: #FBE0D0;
+            color: #222;
+            font-size: 18px;
+            font-weight: bold;
+            border: 1.5px solid #d9b79e;
+            padding: 6px 0px;
+        }
+        QTableWidget {
+            font-size: 15px;
+            background: #fff6f1;
+        }
+    """)
 
         row_btns = QHBoxLayout()
         self.btn_add_history = QPushButton("Add History Row")
         self.btn_add_history.clicked.connect(self.add_history_row)
+        self.btn_add_history.setStyleSheet("background-color: #7dcea0; color: white; font-weight: bold; font-size: 18px; border-radius: 8px; padding: 8px 24px;")
         self.btn_remove_history = QPushButton("Remove Selected")
         self.btn_remove_history.clicked.connect(self.remove_history_row)
+        self.btn_remove_history.setStyleSheet("background-color: #d295bf; color: white; font-weight: bold; font-size: 18px; border-radius: 8px; padding: 8px 24px;")
         row_btns.addWidget(self.btn_add_history)
         row_btns.addWidget(self.btn_remove_history)
         row_btns.addStretch()
@@ -451,10 +678,6 @@ class PatientsPage(QWidget):
         self.submit_button.clicked.connect(self.submit_student)
         nav4.addWidget(self.submit_button)
         layout4.addLayout(nav4)
-
-        self.add_form_stack.addWidget(page1)
-        self.add_form_stack.addWidget(page2)
-        self.add_form_stack.addWidget(page3)
         self.add_form_stack.addWidget(page4)
 
         self.form_widget = QWidget()
@@ -462,6 +685,27 @@ class PatientsPage(QWidget):
         form_layout.setContentsMargins(0, 0, 0, 0)
         form_layout.setSpacing(0)
         form_layout.addWidget(self.add_form_stack)
+
+        # Make the form scrollable
+        self.form_scroll = QScrollArea()
+        self.form_scroll.setWidgetResizable(True)
+        self.form_scroll.setWidget(self.form_widget)
+
+        # Optional: Style the scrollbar to match your theme
+        scrollbar_style = """
+        QScrollBar:vertical {
+            background: #FBE0D0;
+        }
+        """
+        self.form_scroll.setStyleSheet(scrollbar_style)
+        
+    def goto_medical_history_from_health(self):
+        self.has_current_issue = False
+        self.add_form_stack.setCurrentIndex(3)  # Medical History
+
+    def goto_current_issue_from_health(self):
+        self.has_current_issue = True
+        self.add_form_stack.setCurrentIndex(2)  # Current Health Issue
 
     def go_to_next_after_health(self):
         idx = self.current_issue_combo.currentIndex()
@@ -473,8 +717,7 @@ class PatientsPage(QWidget):
             self.add_form_stack.setCurrentIndex(2)  # Go to Current Health Issue
 
     def go_to_previous_from_history(self):
-        idx = self.current_issue_combo.currentIndex()
-        if idx == 2:
+        if self.has_current_issue:
             self.add_form_stack.setCurrentIndex(2)  # Back to current health issue
         else:
             self.add_form_stack.setCurrentIndex(1)  # Back to health record
@@ -513,9 +756,9 @@ class PatientsPage(QWidget):
         try:
             self.conn = psycopg2.connect(
                 host="localhost",
-                database="SAMPLE",
+                database="MediTrackSNHS",
                 user="postgres",
-                password="123"
+                password="Mylovemondejar"
             )
         except Exception as e:
             QMessageBox.critical(self, "DB Connection Error", str(e))
@@ -533,7 +776,7 @@ class PatientsPage(QWidget):
         self.section_year_level_combo.addItem("Select Year Level", -1)
         self.year_level_list.clear()
         self.year_level_input_add.clear()
-        self.year_level_input_add.addItem("Select Year Level", -1)
+        self.year_level_input_add.addItem("Select Yr Level", -1)
 
         for _id, name in rows:
             self.year_level_input_view.addItem(name, _id)
@@ -578,11 +821,7 @@ class PatientsPage(QWidget):
 
     # ---START OF EDIT BUTTON AND EDIT FUNCTIONALITY---
     def display_students(self):
-        for c in self.student_cards:
-            self.view_students_layout.removeWidget(c)
-            c.deleteLater()
-        self.student_cards.clear()
-
+        self.students_table.setRowCount(0)
         year_level_id = self.year_level_input_view.currentData()
         section_id = self.section_input_view.currentData()
         if year_level_id == -1 or section_id == -1:
@@ -592,67 +831,58 @@ class PatientsPage(QWidget):
         try:
             cursor = self.conn.cursor()
             cursor.execute("""
-                SELECT stud_id, stud_fname, stud_lname FROM student
+                SELECT stud_id, stud_lname, stud_mname, stud_fname FROM student
                 WHERE year_level_id = %s AND section_id = %s
                 ORDER BY stud_lname, stud_fname
             """, (year_level_id, section_id))
             students = cursor.fetchall()
             cursor.close()
-            if students:
-                for stud in students:
-                    # Create a horizontal widget for each student with an edit button
-                    student_widget = QWidget()
-                    row_layout = QHBoxLayout(student_widget)
-                    row_layout.setContentsMargins(0, 0, 0, 0)
-                    row_layout.setSpacing(12)
+            self.students_table.setRowCount(len(students))
 
-                    card = QLabel(f"<b>{stud[0]}: {stud[1]} {stud[2]}</b>")
-                    card.setStyleSheet("""
-                        background: #fff;
-                        border-radius: 10px;
-                        border: 1.5px solid #d9b79e;
-                        font-size: 28px;
-                        font-weight: 500;
-                        margin-top: 16px;
-                        margin-bottom: 8px;
-                        padding: 18px 22px;
-                    """)
-                    row_layout.addWidget(card)
+            for row_idx, stud in enumerate(students):
+                # LRN
+                lrn_item = QTableWidgetItem(str(stud[0]))
+                lrn_item.setTextAlignment(Qt.AlignCenter)
+                self.students_table.setItem(row_idx, 0, lrn_item)
 
-                    edit_btn = QPushButton("Edit")
-                    edit_btn.setStyleSheet("""
-                        QPushButton {
-                            background-color: #f7ca18;
-                            color: #4a3625;
-                            font-weight: bold;
-                            font-size: 18px;
-                            border-radius: 8px;
-                            padding: 8px 24px;
-                        }
-                        QPushButton:hover {
-                            background-color: #e1b12c;
-                        }
-                    """)
-                    # Use a lambda to capture the current stud_id
-                    edit_btn.clicked.connect(lambda _, s_id=stud[0]: self.edit_student(s_id))
-                    row_layout.addWidget(edit_btn)
-                    row_layout.addStretch()
+                # Last Name
+                lastname_item = QTableWidgetItem(str(stud[1]))
+                lastname_item.setTextAlignment(Qt.AlignCenter)
+                self.students_table.setItem(row_idx, 1, lastname_item)
 
-                    self.view_students_layout.addWidget(student_widget)
-                    self.student_cards.append(student_widget)
-            else:
-                card = QLabel("No students found for the selected Year Level and Section.")
-                card.setStyleSheet("""
-                    background: #faf1e6;
-                    color: #b47c63;
-                    border-radius: 10px;
-                    font-size: 26px;
-                    font-weight: 400;
-                    margin-top: 18px;
-                    padding: 16px 22px;
+                # Middle Name
+                middlename_item = QTableWidgetItem(str(stud[2]))
+                middlename_item.setTextAlignment(Qt.AlignCenter)
+                self.students_table.setItem(row_idx, 2, middlename_item)
+
+                # First Name
+                firstname_item = QTableWidgetItem(str(stud[3]))
+                firstname_item.setTextAlignment(Qt.AlignCenter)
+                self.students_table.setItem(row_idx, 3, firstname_item)
+
+                # Edit Button
+                edit_btn = QPushButton("Edit")
+                edit_btn.setStyleSheet("""
+                    QPushButton {
+                        background-color: #f7ca18;
+                        color: #4a3625;
+                        font-weight: bold;
+                        font-size: 18px;
+                        border-radius: 8px;
+                        padding: 7px 28px;
+                    }
+                    QPushButton:hover {
+                        background-color: #e1b12c;
+                    }
                 """)
-                self.view_students_layout.addWidget(card)
-                self.student_cards.append(card)
+                edit_btn.clicked.connect(lambda _, s_id=stud[0]: self.edit_student(s_id))
+                btn_widget = QWidget()
+                btn_layout = QHBoxLayout(btn_widget)
+                btn_layout.addStretch()
+                btn_layout.addWidget(edit_btn)
+                btn_layout.addStretch()
+                btn_layout.setContentsMargins(0, 0, 0, 0)
+                self.students_table.setCellWidget(row_idx, 4, btn_widget)
         except Exception as e:
             QMessageBox.critical(self, "Database Error", f"An error occurred while fetching students:\n{e}")
 
@@ -665,7 +895,7 @@ class PatientsPage(QWidget):
             cursor = self.conn.cursor()
             cursor.execute("""
                 SELECT
-                    stud_id, stud_fname, stud_lname, stud_DOB, stud_gender,
+                    stud_id, stud_fname, stud_mname, stud_lname, stud_DOB, stud_gender,
                     section_id, year_level_id, stud_email_add, stud_address,
                     stud_parent_fname, stud_parent_lname, stud_parent_contnum, stud_status
                 FROM student WHERE stud_id = %s
@@ -828,13 +1058,14 @@ class PatientsPage(QWidget):
             # Update student
             cursor.execute("""
                 UPDATE student SET
-                    stud_fname=%s, stud_lname=%s, stud_DOB=%s, stud_gender=%s,
+                    stud_fname=%s, stud_mname=%s, stud_lname=%s, stud_DOB=%s, stud_gender=%s,
                     section_id=%s, year_level_id=%s, stud_email_add=%s,
                     stud_address=%s, stud_parent_fname=%s, stud_parent_lname=%s,
                     stud_parent_contnum=%s, stud_status=%s
                 WHERE stud_id=%s
             """, (
                 self.fname_input.text().strip(),
+                self.mname_input.text().strip(),
                 self.lname_input.text().strip(),
                 self.dob_input.date().toString("yyyy-MM-dd"),
                 self.gender_input.currentText(),
@@ -881,33 +1112,27 @@ class PatientsPage(QWidget):
         except Exception as e:
             self.conn.rollback()
             QMessageBox.critical(self, "Database Error", f"An error occurred:\n{e}")
-    def show_view_students(self):
-        self.header.setText("View Students")
-        self.clear_container()
-        self.center_frame_layout.insertWidget(3, self.view_students_area)
-        self.view_students_area.show()
-        self.form_widget.hide()
-        self.manage_widget.hide()
 
     def show_view_students(self):
         self.header.setText("View Students")
-        self.clear_container()
-        self.center_frame_layout.insertWidget(3, self.view_students_area)
+        # Show only the widgets relevant for viewing students
         self.filter_widget.show()
         self.view_students_button.show()
-        self.view_students_area.show()
-        self.form_widget.hide()
-        self.manage_widget.hide()
+        self.students_table.show()
+        # Hide other widgets if you have them
+        if hasattr(self, 'form_widget'):
+            self.form_scroll.hide()
+        if hasattr(self, 'manage_widget'):
+            self.manage_widget.hide()
         self.btn_switch_to_add.show()
         self.btn_switch_to_manage.show()
         self.btn_switch_to_view.hide()
 
-    def show_add_student(self):
+    def show_add_student(self):     
         self.header.setText("Add Student Info")
         self.clear_container()
-        self.center_frame_layout.insertWidget(3, self.form_widget)
-        self.form_widget.show()
-        self.view_students_area.hide()
+        self.center_frame_layout.insertWidget(3, self.form_scroll)
+        self.form_scroll.show()
         self.manage_widget.hide()
         self.filter_widget.hide()
         self.view_students_button.hide()
@@ -923,8 +1148,7 @@ class PatientsPage(QWidget):
         self.clear_container()
         self.center_frame_layout.insertWidget(3, self.manage_widget)
         self.manage_widget.show()
-        self.view_students_area.hide()
-        self.form_widget.hide()
+        self.form_scroll.hide()
         self.filter_widget.hide()
         self.view_students_button.hide()
         self.btn_switch_to_add.show()
@@ -987,14 +1211,15 @@ class PatientsPage(QWidget):
             # Insert student
             insert_query = """
                 INSERT INTO student (
-                    stud_id, stud_fname, stud_lname, stud_DOB, stud_gender,
+                    stud_id, stud_fname, stud_mname, stud_lname, stud_DOB, stud_gender,
                     section_id, year_level_id, stud_email_add,
                     stud_address, stud_parent_fname, stud_parent_lname, stud_parent_contnum, stud_status
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
             data = (
                 lrn,
                 self.fname_input.text().strip(),
+                self.mname_input.text().strip(),
                 self.lname_input.text().strip(),
                 self.dob_input.date().toString("yyyy-MM-dd"),
                 self.gender_input.currentText(),
@@ -1132,4 +1357,57 @@ class PatientsPage(QWidget):
         for _id, name in rows:
             self.section_list.addItem(f"{_id}: {name}")
         cursor.close()
+        
+class CmLineEdit(QLineEdit):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setValidator(QIntValidator(0, 999, self))
+        self._updating = False
+        self.textChanged.connect(self._add_suffix)
+        self.setAlignment(Qt.AlignLeft)
 
+    def _add_suffix(self, text):
+        if self._updating:
+            return
+        self._updating = True
+        # Remove ' cm' if it exists
+        clean = text.replace(' cm', '').strip()
+        if clean:
+            self.setText(f"{clean} cm")
+            # Move cursor just before the space
+            self.setCursorPosition(len(clean))
+        else:
+            self.setText('')
+        self._updating = False
+
+    def value(self):
+        """Returns the int value (or None if empty)"""
+        text = self.text().replace(' cm', '').strip()
+        return int(text) if text.isdigit() else None
+        
+class KgLineEdit(QLineEdit):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setValidator(QIntValidator(0, 999, self))
+        self._updating = False
+        self.textChanged.connect(self._add_suffix)
+        self.setAlignment(Qt.AlignLeft)
+
+    def _add_suffix(self, text):
+        if self._updating:
+            return
+        self._updating = True
+        # Remove ' kg' if it exists
+        clean = text.replace(' kg', '').strip()
+        if clean:
+            self.setText(f"{clean} kg")
+            # Move cursor just before the space
+            self.setCursorPosition(len(clean))
+        else:
+            self.setText('')
+        self._updating = False
+
+    def value(self):
+        """Returns the int value (or None if empty)"""
+        text = self.text().replace(' kg', '').strip()
+        return int(text) if text.isdigit() else None
