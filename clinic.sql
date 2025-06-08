@@ -156,3 +156,13 @@ CREATE TABLE referral (
     created_at TIMESTAMP,
     updated_at TIMESTAMP
 );
+
+CREATE TABLE clinic_visit_log (
+    visit_id SERIAL PRIMARY KEY,
+    stud_id VARCHAR(30) REFERENCES student(stud_id),
+    visit_date DATE,
+    reason VARCHAR(255),
+    time_in TIME,
+    time_out TIME,
+    created_at TIMESTAMP DEFAULT NOW()
+);
