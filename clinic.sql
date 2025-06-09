@@ -166,3 +166,9 @@ CREATE TABLE clinic_visit_log (
     time_out TIME,
     created_at TIMESTAMP DEFAULT NOW()
 );
+
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL
+);
