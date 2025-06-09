@@ -1,10 +1,10 @@
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QStackedWidget,
     QFrame, QLabel, QTableWidget, QTableWidgetItem, QMessageBox, QHeaderView,
-    QLineEdit, QDialog, QFormLayout, QComboBox
+    QLineEdit, QDialog, QFormLayout, QComboBox, QSizePolicy
 )
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QPixmap
 import psycopg2
 import datetime
 
@@ -87,7 +87,6 @@ class HomeDashboardPage(QWidget):
         self.hotline_label.setWordWrap(True)
         self.hotline_label.setStyleSheet("margin-top:10px;font-size:15px;")
         hotline_block.addWidget(self.hotline_label)
-        # Add hotline button
         self.add_hotline_btn = QPushButton("Add Hotline")
         self.add_hotline_btn.setStyleSheet(
             "background:#D295BF; color:white; font-weight:bold; font-size:15px; padding:8px 18px; border-radius:10px; margin-top:8px;"
@@ -110,7 +109,6 @@ class HomeDashboardPage(QWidget):
         feed_frame.layout().addWidget(self.feed_label)
         feed_frame.setStyleSheet("background:#FFF9E6;border-radius:18px;padding:18px;")
 
-        # --- Middle Row: Alerts | Hotlines | Activity ---
         mid_row = QHBoxLayout()
         mid_row.addWidget(alert_frame, 2)
         mid_row.addWidget(hotline_frame, 3)
@@ -138,91 +136,91 @@ class HomeDashboardPage(QWidget):
                 }
                 QPushButton:hover { background:#BA74AD; }
             """)
+            b.clicked.connect(cb)
             action_row.addWidget(b)
         action_row.addStretch()
         layout.addLayout(action_row)
 
-        # --- Recent Clinic Visits Card ---
+        # --- Recent Clinic Visits Card (Header fully visible & readable) ---
         visits_card = QFrame()
         visits_card.setStyleSheet("""
             QFrame {
                 background: #FFF8F4;
-                border-radius: 24px;
-                border: 2.5px solid #FED6C8;
+                border-radius: 8px;
+                border: 2px solid #E4BAB2;
                 margin-top: 12px;
                 margin-bottom: 12px;
-                padding: 20px 28px 18px 28px;
-                box-shadow: 0 8px 32px 0 #D295BF22;
+                padding: 0px;
             }
         """)
         visits_layout = QVBoxLayout(visits_card)
-        visits_layout.setContentsMargins(0, 0, 0, 0)
-        visits_layout.setSpacing(10)
+        visits_layout.setContentsMargins(16, 16, 16, 16)
+        visits_layout.setSpacing(0)
 
-        # --- Title Row ---
-        title_row = QHBoxLayout()
-        title_lbl = QLabel("📝 Recent Clinic Visits")
-        title_lbl.setStyleSheet("font-size:22px; font-weight:bold;")
-        title_row.addWidget(title_lbl)
-        title_row.addStretch()
-        visits_layout.addLayout(title_row)
+        # Add a big bold header above the table
+        visits_header = QLabel("📝 Recent Clinic Visits")
+        visits_header.setStyleSheet("font-size: 25px; font-weight: bold; color: #B43D16; margin-bottom: 10px;")
+        visits_header.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        visits_layout.addWidget(visits_header)
 
-        # --- Manual Header Row ---
-        header_row = QHBoxLayout()
-        headers = ["Student ID", "Name", "Date", "Reason", "Time In", "Time Out"]
-        for h in headers:
-            lbl = QLabel(h)
-            lbl.setFont(QFont("Arial", 12, QFont.Bold))
-            lbl.setStyleSheet("color: #6F3B7C; padding: 4px 12px;")
-            header_row.addWidget(lbl, stretch=1)
-        visits_layout.addLayout(header_row)
-
-        # --- Table ---
+        headers = [
+            "Student ID", "Student Name", "Visit Date", "Reason", "Time In", "Time Out"
+        ]
         self.visits_table = QTableWidget(0, 6)
         self.visits_table.setHorizontalHeaderLabels(headers)
-        self.visits_table.setStyleSheet("""
-            QTableWidget {
-                background-color: #FFF8F4;
-                alternate-background-color: #FFEDE4;
-                border: none;
-                border-radius: 16px;
-                font-size: 16px;
-                selection-background-color: #FFD5C2;
-                selection-color: #3a2b23;
-                outline: none;
-                padding: 0px;
-            }
-            QTableWidget::item {
-                padding: 14px;
-                font-size: 16px;
-                border: none;
-            }
-            QHeaderView::section {
-                background-color: #FFD5C2;
-                color: #6F3B7C;
-                font-size: 18px;
-                font-weight: bold;
-                padding: 10px 0px;
-                border: none;
-                border-bottom: 3px solid #D295BF;
-                border-radius: 0px;
-            }
-            QTableCornerButton::section {
-                background-color: #FFD5C2;
-                border: none;
-            }
-        """)
+        self.visits_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.visits_table.setMinimumHeight(300)
         self.visits_table.setAlternatingRowColors(True)
-        self.visits_table.verticalHeader().setVisible(False)
+        self.visits_table.setShowGrid(True)
         self.visits_table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.visits_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.visits_table.setShowGrid(False)
         self.visits_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.visits_table.setSelectionMode(QTableWidget.SingleSelection)
-        visits_layout.addWidget(self.visits_table)
-        layout.addWidget(visits_card)
+        self.visits_table.verticalHeader().setVisible(True)
+        self.visits_table.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self.visits_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.visits_table.verticalHeader().setDefaultAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+        self.visits_table.verticalHeader().setFixedWidth(38)
 
-        # --- Update all dynamic info ---
+        # Table header style: let Qt auto-size height, use padding and font.
+        self.visits_table.horizontalHeader().setStyleSheet("""
+        QHeaderView::section {
+            background-color: #F9D2C8;
+            color: #3C2121;
+            font-size: 18px;
+            font-weight: bold;
+            border: 1px solid #E4BAB2;
+            border-bottom: 2px solid #E4BAB2;
+            border-right: 1px solid #E4BAB2;
+            text-align: center;
+            padding-top: 10px;
+            padding-bottom: 10px;
+        }
+        """)
+        # Fix: Only set minimum section size, not fixed height, to avoid collapsed headers
+        header = self.visits_table.horizontalHeader()
+        header.setMinimumSectionSize(44)
+        header.setDefaultAlignment(Qt.AlignCenter)
+        font = header.font()
+        font.setPointSize(16)
+        font.setBold(True)
+        header.setFont(font)
+
+        self.visits_table.verticalHeader().setStyleSheet("""
+        QHeaderView::section {
+            background-color: #F9D2C8;
+            color: #3C2121;
+            font-size: 15px;
+            font-weight: bold;
+            border: 1px solid #E4BAB2;
+            text-align: center;
+            padding: 2px;
+        }
+        """)
+
+        visits_layout.addWidget(self.visits_table)
+        layout.addWidget(visits_card, stretch=2)
+
+        self.setLayout(layout)
         self.refresh_dashboard()
 
     def _stat_card(self, title, value):
@@ -292,11 +290,14 @@ class HomeDashboardPage(QWidget):
             """)
             rows = cur.fetchall()
             self.visits_table.setRowCount(0)
-            for row in rows:
+            for idx, row in enumerate(rows):
                 r = self.visits_table.rowCount()
                 self.visits_table.insertRow(r)
                 for c, val in enumerate(row):
                     self.visits_table.setItem(r, c, QTableWidgetItem(str(val) if val is not None else ""))
+            # Set vertical header numbers (1-based)
+            for r in range(self.visits_table.rowCount()):
+                self.visits_table.setVerticalHeaderItem(r, QTableWidgetItem(str(r + 1)))
 
             # Recent Activity Feed
             feed = []
@@ -351,7 +352,6 @@ class HomeDashboardPage(QWidget):
             except Exception as e:
                 QMessageBox.critical(self, "Database Error", f"Error adding hotline: {e}")
 
-    # --- Navigation for Quick Actions ---
     def goto_patients(self): self.parent().setCurrentIndex(1)
     def goto_clinic_visit(self): self.parent().setCurrentIndex(6)
     def goto_medication(self): self.parent().setCurrentIndex(4)
@@ -376,14 +376,22 @@ class DashboardUI(QWidget):
         sidebar_layout.setAlignment(Qt.AlignTop)
         sidebar_layout.setSpacing(18)
 
-        logo_label = QLabel("LOGO HERE")
-        logo_label.setAlignment(Qt.AlignCenter)
-        logo_label.setStyleSheet(
-            "border: 2px dashed #AAAAAA; font-size: 18px; color: #888888; padding: 60px;"
-        )
+        # --- LOGO IMAGE ---
+        logo_label = QLabel()
+        logo_pixmap = QPixmap("LOGO.png")
+        if not logo_pixmap.isNull():
+            logo_pixmap = logo_pixmap.scaled(150, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            logo_label.setPixmap(logo_pixmap)
+            logo_label.setAlignment(Qt.AlignCenter)
+            logo_label.setStyleSheet("padding: 20px;")
+        else:
+            logo_label.setText("LOGO.png")
+            logo_label.setAlignment(Qt.AlignCenter)
+            logo_label.setStyleSheet(
+                "border: 2px dashed #AAAAAA; font-size: 18px; color: #888888; padding: 60px;"
+            )
         sidebar_layout.addWidget(logo_label)
 
-        # DB connection for dashboard/reports
         self.conn = psycopg2.connect(
             host="localhost",
             database="SAMPLE",
@@ -391,10 +399,7 @@ class DashboardUI(QWidget):
             password="123"
         )
 
-        # Page Stack
         self.pages = QStackedWidget()
-
-        # Instantiate each page
         self.dashboard_page = HomeDashboardPage(self.conn)
         self.patients_page = PatientsPage()
         self.reports_page = ReportsPage(self.conn)
@@ -403,7 +408,6 @@ class DashboardUI(QWidget):
         self.referral_page = ReferralPage()
         self.clinic_visit_log_page = ClinicVisitLog()
 
-        # Add pages to stacked widget in order for navigation
         self.pages.addWidget(self.dashboard_page)         # index 0
         self.pages.addWidget(self.patients_page)          # index 1
         self.pages.addWidget(self.reports_page)           # index 2
@@ -412,7 +416,6 @@ class DashboardUI(QWidget):
         self.pages.addWidget(self.referral_page)          # index 5
         self.pages.addWidget(self.clinic_visit_log_page)  # index 6
 
-        # Sidebar buttons and page mapping
         menu_items = [
             ("Dashboard", self.dashboard_page),
             ("Patients", self.patients_page),
@@ -444,8 +447,8 @@ class DashboardUI(QWidget):
 
         main_layout.addWidget(sidebar)
         main_layout.addWidget(self.pages)
+        self.setLayout(main_layout)
 
-# Main entry point to run the dashboard directly
 if __name__ == "__main__":
     import sys
     from PyQt5.QtWidgets import QApplication
