@@ -15,7 +15,7 @@ CREATE TABLE section (
 CREATE TABLE student (
     stud_id VARCHAR(30) PRIMARY KEY,
     stud_fname VARCHAR(100),
-    stud_mname VARCHAR(100), -- Added middle name
+    stud_mname VARCHAR(100), 
     stud_lname VARCHAR(100),
     stud_dob DATE,
     stud_gender VARCHAR(10),
