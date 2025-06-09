@@ -26,8 +26,7 @@ class ReportsPage(QWidget):
         self.setLayout(layout)
         self.setStyleSheet("""
             QWidget {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #d6eaf8, stop:1 #f9e6dc);
+                background:#FFE1D3
             }
         """)
 
@@ -45,14 +44,14 @@ class ReportsRecordsPage(QWidget):
 
     def init_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setContentsMargins(20, 20, 20, 60)
         layout.setSpacing(10)
 
         title = QLabel("Accident/Incident Reports")
         title.setStyleSheet("""
             font-size: 28px;
             font-weight: bold;
-            background: #d6eaf8;
+            background: #FDD1B0;
             border-radius: 10px;
             padding: 10px;
             color: #3a2b23;
@@ -67,8 +66,8 @@ class ReportsRecordsPage(QWidget):
         self.search_bar.setFixedWidth(400)
         self.search_bar.setStyleSheet("""
             QLineEdit {
-                background-color: #f0f8ff;
-                border: 2px solid #5499c7;
+                background-color: #FFF0F5;
+                border: 2px solid #D295BE;
                 border-radius: 5px;
                 padding: 8px 12px;
                 font-size: 16px;
@@ -84,7 +83,7 @@ class ReportsRecordsPage(QWidget):
 
         add_btn = QPushButton("Add Report")
         add_btn.setFixedWidth(150)
-        add_btn.setStyleSheet("background-color: #5499c7; color: white; font-weight: bold; padding: 15px; border-radius: 10px; font-size: 18px;")
+        add_btn.setStyleSheet("background-color: #D295BE; color: white; font-weight: bold; padding: 15px; border-radius: 10px; font-size: 18px;")
         add_btn.clicked.connect(self.open_add_report_dialog)
 
         self.edit_btn = QPushButton("Edit")
@@ -119,7 +118,7 @@ class ReportsRecordsPage(QWidget):
         ])
         self.table.setStyleSheet("""
             QTableWidget {
-                background-color: #f6fbfc;
+                background-color: #FFF5F0;
             }
             QTableWidget::item {
                 font-size: 18px;
@@ -127,12 +126,12 @@ class ReportsRecordsPage(QWidget):
             QHeaderView::section {
                 font-size: 20px;
                 font-weight: bold;
-                background-color: #d6eaf8;
-                border: 1px solid #5499c7;
+                background-color: #FFE1D3;
+                border: 1px solid #D295BE;
             }
             QTableCornerButton::section {
-                background-color: #d6eaf8;
-                border: 1px solid #5499c7;
+                background-color: #FFE1D3;
+                border: 1px solid #D295BE;
             }
         """)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
@@ -180,7 +179,7 @@ class ReportsRecordsPage(QWidget):
                 self.table.setItem(row_idx, col_idx, item)
             self.table.setVerticalHeaderItem(row_idx, QTableWidgetItem(str(row_idx + 1)))
             btn = QPushButton("Generate DOCX")
-            btn.setFixedWidth(150)
+            btn.setFixedWidth(136)
             btn.setStyleSheet("""
                 QPushButton { background: #A3D5FF; border-radius:5px; font-size:16px; padding:6px 12px;}
             """)
@@ -378,7 +377,7 @@ class AddReportDialog(QDialog):
             QLineEdit, QDateEdit, QTextEdit {
                 font-size: 18px;
                 padding: 10px;
-                border: 2px solid #5499c7;
+                border: 2px solid #D295BE;
                 border-radius: 8px;
                 min-height: 30px;
                 background-color: #FFFFFF;
@@ -424,7 +423,7 @@ class AddReportDialog(QDialog):
         save_btn = QPushButton("Save Report")
         save_btn.setStyleSheet("""
             QPushButton {
-                background:#5499c7; color:white; font-size: 17px; font-weight:bold;
+                background:#D295BE; color:white; font-size: 17px; font-weight:bold;
                 padding: 10px 26px; border-radius: 10px; min-width:160px;
             }
             QPushButton:hover { background: #2980b9; }
@@ -484,7 +483,7 @@ class EditReportDialog(QDialog):
             QLineEdit, QDateEdit, QTextEdit {
                 font-size: 18px;
                 padding: 10px;
-                border: 2px solid #5499c7;
+                border: 2px solid #D295BE;
                 border-radius: 8px;
                 min-height: 30px;
                 background-color: #FFFFFF;
@@ -538,7 +537,7 @@ class EditReportDialog(QDialog):
         save_btn = QPushButton("Save Changes")
         save_btn.setStyleSheet("""
             QPushButton {
-                background:#5499c7; color:white; font-size: 17px; font-weight:bold;
+                background:#D295BE; color:white; font-size: 17px; font-weight:bold;
                 padding: 10px 26px; border-radius: 10px; min-width:160px;
             }
             QPushButton:hover { background: #2980b9; }
@@ -598,7 +597,7 @@ class ViewReportDialog(QDialog):
             QLineEdit, QDateEdit, QTextEdit {
                 font-size: 18px;
                 padding: 10px;
-                border: 2px solid #5499c7;
+                border: 2px solid #D295BE;
                 border-radius: 8px;
                 min-height: 30px;
                 background-color: #F9F9F9;
