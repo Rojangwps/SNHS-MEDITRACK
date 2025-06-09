@@ -22,7 +22,7 @@ class PatientsPage(QWidget):
         self.main_layout = QHBoxLayout(self)
         self.setStyleSheet("background-color: #fff6f1;")
         self.center_frame = QFrame()
-        self.center_frame.setMaximumHeight(1020)  # You can adjust this number as needed
+        self.center_frame.setFixedHeight(1000)  # You can adjust this number as needed
         self.center_frame.setObjectName("MainFrame")
         self.center_frame.setStyleSheet("""
             QFrame#MainFrame {
@@ -32,8 +32,8 @@ class PatientsPage(QWidget):
             }
         """)
         self.center_frame_layout = QVBoxLayout(self.center_frame)
-        self.center_frame_layout.setContentsMargins(24, 0, 24, 0)
-        self.center_frame_layout.setSpacing(18)
+        self.center_frame_layout.setContentsMargins(24, 24, 24, 24)
+        self.center_frame_layout.setSpacing(5)
         self.main_layout.addWidget(self.center_frame, stretch=8)
 
         self.header = QLabel("View Students")
@@ -755,9 +755,9 @@ class PatientsPage(QWidget):
         try:
             self.conn = psycopg2.connect(
                 host="localhost",
-                database="SAMPLE",
+                database="MediTrackSNHS",
                 user="postgres",
-                password="123"
+                password="Mylovemondejar"
             )
         except Exception as e:
             QMessageBox.critical(self, "DB Connection Error", str(e))
