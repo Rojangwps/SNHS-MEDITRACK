@@ -19,8 +19,9 @@ def get_db_connection():
 class ItemDialog(QDialog):
     def __init__(self, name="", quantity="", dosage="", unit="", expiry=None, status="Available"):
         super().__init__()
-        self.setWindowTitle("Item Details")
-        self.setFixedSize(500, 450)
+        self.setWindowTitle("Add Item")
+        self.setContentsMargins(20, 20, 20, 40)
+        self.setMinimumSize(500, 400)
         self.setStyleSheet("""
             QDialog {
                 background-color: #FFF5F0;
@@ -258,19 +259,20 @@ class StoragePage(QWidget):
 
     def init_ui(self):
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setContentsMargins(20, 20, 20, 60)
         main_layout.setSpacing(10)
 
-        title_label = QLabel("Storage Inventory")
-        title_label.setStyleSheet("""
-            background-color: #FFE1D3;
-            padding: 10px;
-            border-radius: 10px;
-            font-weight: bold;
+        title = QLabel("Storage Inventory")
+        title.setStyleSheet("""
             font-size: 28px;
+            font-weight: bold;
+            background: #FDD1B0;
+            border-radius: 10px;
+            padding: 10px;
+            color: #3a2b23;
         """)
-        title_label.setAlignment(Qt.AlignCenter)
-        main_layout.addWidget(title_label)
+        title.setAlignment(Qt.AlignCenter)
+        main_layout.addWidget(title)
 
         control_layout = QHBoxLayout()
         self.search_bar = QLineEdit()
@@ -314,7 +316,6 @@ class StoragePage(QWidget):
             "Name", "Quantity", "Dosage", "Unit", "Expiry Date", "Status", "Actions", "History"
         ])
         font = self.table.font()
-        font.setPointSize(13)
         self.table.setFont(font)
         self.table.setStyleSheet("""
             QTableWidget {
