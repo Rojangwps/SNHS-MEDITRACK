@@ -6,13 +6,15 @@ from PyQt5.QtCore import Qt, QDate, QTime
 import psycopg2
 import csv
 
+
 def get_db_connection():
     return psycopg2.connect(
         host="localhost",
-        database="MediTrackSNHS",
+        database="SAMPLE",
         user="postgres",
-        password="Mylovemondejar"
+        password="123"
     )
+
 
 class ClinicVisitLog(QWidget):
     def __init__(self):
@@ -59,17 +61,20 @@ class ClinicVisitLog(QWidget):
         self.add_btn = QPushButton("Add")
         self.add_btn.setFixedWidth(120)
         self.add_btn.setFixedHeight(45)
-        self.add_btn.setStyleSheet("background-color: #D295BF; color: white; font-weight: bold; padding: 15px; border-radius: 10px; font-size: 18px;")
-        
+        self.add_btn.setStyleSheet(
+            "background-color: #D295BF; color: white; font-weight: bold; padding: 15px; border-radius: 10px; font-size: 18px;")
+
         self.edit_btn = QPushButton("Edit")
         self.edit_btn.setFixedWidth(120)
         self.edit_btn.setFixedHeight(45)
-        self.edit_btn.setStyleSheet("background-color: #F7CA18; color: white; font-weight: bold; padding: 15px; border-radius: 10px; font-size: 18px;")
-        
+        self.edit_btn.setStyleSheet(
+            "background-color: #F7CA18; color: white; font-weight: bold; padding: 15px; border-radius: 10px; font-size: 18px;")
+
         self.export_btn = QPushButton("Export CSV")
         self.export_btn.setFixedWidth(160)
         self.export_btn.setFixedHeight(45)
-        self.export_btn.setStyleSheet("background-color: #5DADE2; color: white; font-weight: bold; border-radius: 10px; font-size: 18px;")
+        self.export_btn.setStyleSheet(
+            "background-color: #5DADE2; color: white; font-weight: bold; border-radius: 10px; font-size: 18px;")
 
         control_layout.addWidget(self.search_box)
         control_layout.addStretch()
@@ -154,11 +159,11 @@ class ClinicVisitLog(QWidget):
         filtered = []
         for row in self.rows:
             if (query in str(row[0]).lower() or
-                query in str(row[1]).lower() or
-                query in str(row[2]).lower() or
-                query in str(row[3]).lower() or
-                query in str(row[4]).lower() or
-                query in str(row[5]).lower()):
+                    query in str(row[1]).lower() or
+                    query in str(row[2]).lower() or
+                    query in str(row[3]).lower() or
+                    query in str(row[4]).lower() or
+                    query in str(row[5]).lower()):
                 filtered.append(row)
         self.display_rows(filtered)
 
@@ -235,6 +240,7 @@ class ClinicVisitLog(QWidget):
             QMessageBox.information(self, "Export CSV", f"Exported to {path}")
         except Exception as e:
             QMessageBox.critical(self, "Export Error", f"Error exporting CSV:\n{e}")
+
 
 class AddClinicVisitDialog(QDialog):
     def __init__(self, parent=None):
@@ -342,6 +348,7 @@ class AddClinicVisitDialog(QDialog):
     def get_data(self):
         return self.data
 
+
 class EditClinicVisitDialog(QDialog):
     def __init__(self, parent=None, record=None):
         super().__init__(parent)
@@ -446,6 +453,7 @@ class EditClinicVisitDialog(QDialog):
                     timeedit.setTime(t)
                 else:
                     timeedit.setTime(QTime.currentTime())
+
             safe_set_time(self.cvl_time_in, record[4])
             safe_set_time(self.cvl_time_out, record[5])
 
