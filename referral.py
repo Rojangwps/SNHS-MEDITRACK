@@ -38,14 +38,14 @@ class ReferralRecordsPage(QWidget):
 
     def init_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setContentsMargins(20, 20, 20, 60)
         layout.setSpacing(10)
 
         title = QLabel("Student Referrals")
         title.setStyleSheet("""
             font-size: 28px;
             font-weight: bold;
-            background: #FFE1D3;
+            background: #FDD1B0;
             border-radius: 10px;
             padding: 10px;
             color: #3a2b23;
