@@ -21,7 +21,7 @@ class ItemDialog(QDialog):
         super().__init__()
         self.setWindowTitle("Add Item")
         self.setContentsMargins(20, 20, 20, 40)
-        self.setMinimumSize(500, 400)
+        self.setMinimumSize(600, 400)
         self.setStyleSheet("""
             QDialog {
                 background-color: #FFF5F0;
